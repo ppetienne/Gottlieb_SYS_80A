@@ -52,7 +52,7 @@ def add_replay():
 	add_to_parameter("total replay")
 	
 def add_extra_ball():
-	add_to_parameter("extra ball") 
+	add_to_parameter("total extra ball") 
 
 def get_time_hgtd():
 	if get_data("time HGTD") == 0:

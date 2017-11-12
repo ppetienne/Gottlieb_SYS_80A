@@ -151,9 +151,7 @@ class Lamp():
 			return self.value
 	
 	def blink(self, level, speed=0.5, timeout=0):
-		if self.name == "0_Target_Bank":
-			pass
-		if self._th_blink != None:
+		if self._th_blink != None and self._th_blink.is_alive():
 			self._end_th_blink = True
 			self._th_blink.join()
 			self._th_blink = None
@@ -162,6 +160,7 @@ class Lamp():
 			self._th_blink = threading.Thread(target=self._th_manage_blink, args=(speed, timeout))
 			self._end_th_blink = False
 			self._th_blink.start()
+			
 			
 	def reset(self):
 		if self.get_level() == "blink":
@@ -173,14 +172,20 @@ class Lamp():
 		begin_time = time.time()
 		if self.position % 2 == 0: # Pour faire flasher les lamps en quinconce
 			time.sleep(speed/2)
+		time_refresh = 0.01
+		cpt = 0
 		while self._end_th_blink == False:
-			self.set_level(1)
-			time.sleep(speed/2)
-			self.set_level(0)
-			time.sleep(speed/2)
-			if timeout > 0 and (time.time() > (begin_time + timeout)):
-				break
-
+			if cpt == int(speed/time_refresh) :
+				cpt = 0
+				if self.value == 0:	
+					self.set_level(1)
+				else:
+					self.set_level(0)
+				if timeout > 0 and (time.time() > (begin_time + timeout)):
+					break
+			else:
+				cpt += 1
+				time.sleep(time_refresh)
 ################################################################################
 class Short_Sound():
 	def __init__(self, file):

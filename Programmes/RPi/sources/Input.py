@@ -45,6 +45,7 @@ class Input():
             self.name = name
         else:
             raise Exception("L'input " + name + " est deja existant")
+        
         self.normal_state = normal_state
         self.state = normal_state
         Input.instances[name] = self 
@@ -56,7 +57,10 @@ class Input():
     def set_external_event(self, external_event, **args):
         self.external_event = external_event
         self.args_event = args
-        
+    
+    def get_level(self):
+        return self.state
+    
     def event(self):
         if self.external_event != None:
             self.external_event(**self.args_event)
@@ -84,7 +88,7 @@ class Input_Playfield(Input_Matrix):
         Input_Playfield.instances[self.name] = self 
     
     @staticmethod
-    def set_external_unique_event(external_unique_event, *args):
+    def set_external_unique_event(self, external_unique_event, *args):
         Input_Playfield.external_unique_event = external_unique_event
         Input_Playfield.args_unique_event = args
         
@@ -96,9 +100,6 @@ class Input_Playfield(Input_Matrix):
         
     def new_game(self):
         self.activated = True
-    
-    def stop(self):
-        pass
     
     def event(self):
         super().event()
@@ -119,6 +120,7 @@ class Slam(Input):
     
     def event(self):
         Common.infos_game['status'] = Common.General_Status.SLAM
+        super().event()
             
 ################################################################################
 class Tilt(Input_Matrix):
@@ -160,7 +162,8 @@ class Start(Input_Matrix):
                     self.add_player()
                 else:
                     self.start_new_game()             
-    
+        super().event()
+        
     def add_player(self):
         if Common.add_player() == True:
             Common.add_credits(-1)    # Permet de ne pas utiliser les credits dans les fonctions Common
@@ -184,7 +187,8 @@ class Test(Input_Matrix):
     def event(self):
         if Common.infos_game['status'] == Common.General_Status.ATTRACT_MODE:
             Common.infos_game['status'] = Common.General_Status.TEST
-            
+        
+        super().event()
                 
     def start_pressed(self):
         pass        
@@ -201,6 +205,7 @@ class Credit(Input_Matrix):
     
     def event(self):
         Common.add_credits(self.value)
+        super().event()
 
 ################################################################################
 class Point(Input_Playfield):
@@ -217,6 +222,7 @@ class Point(Input_Playfield):
         
     def event(self):
         Common.add_points_current_player(self.points)
+        super().event()
         
 ################################################################################
 class Point_Light(Input_Playfield):
@@ -233,10 +239,6 @@ class Point_Light(Input_Playfield):
         self.lamp.reset()
         super().tilt()
     
-    def stop(self):
-        self.lamp.reset()
-        super().stop()
-    
     def new_game(self):
         super().new_game()
             
@@ -246,6 +248,7 @@ class Point_Light(Input_Playfield):
         else:
             points = self.points[1]
         Common.add_points_current_player(points)
+        super().event()
 
 ################################################################################
 class Point_Light_Blink(Point_Light):
@@ -267,6 +270,7 @@ class Point_Light_Blink(Point_Light):
             points = self.points[0]
             
         Common.add_points_current_player(points)
+        super().event()
         
 ################################################################################
 class Target(Point_Light):
@@ -336,7 +340,7 @@ class Target_Bank():
     def check_action(self):
         complete = self.is_complete()
         if complete == True and self.external_event != None:
-            self.external_event(self)
+            self.external_event()
         return complete
     
     def is_complete(self):
@@ -392,7 +396,7 @@ class Hole(Input_Playfield):
         self.solenoid = Output.Solenoid.instances[self.name]
     
     def eject_ball(self):
-        self.solenoid.impulse()
+        self.solenoid.pulse()
         
 ################################################################################
 class OutHole(Hole):

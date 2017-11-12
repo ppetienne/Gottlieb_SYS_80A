@@ -8,13 +8,10 @@ import unittest
 import Input
 import Options
 
-
 import Common
 import Display
 import Output
 import Contacts
-from Common import infos_game, General_Status
-import json
 
 lc = Output.Lamp_Control.instances["LD1"]
 ll = Output.Lamp_Latch.instances["DS1"]
@@ -70,6 +67,28 @@ Input.OutHole(x=0, y=0, name="Outhole")
 
 Input.Trough(x=0, y=0, name="Trough")
 
+def simulate_input(name):
+    input = Input.Input.instances[name]
+    input.event()
+    return input
+    
+class General(unittest.TestCase):
+    def test_general(self):
+        Data_Save.reset_data()
+        Options.reset_options()
+        
+        Common.power_on()
+        
+        for i in range(4):
+            simulate_input('Credit')
+            simulate_input('Start')
+        
+        for i in range(Options.get_option('nb_balls')):
+            for i in range(4):
+                simulate_input('Outhole')
+        
+        Common.power_off()
+        
 class Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -87,32 +106,26 @@ class Test(unittest.TestCase):
     def tearDownClass(cls):
         Common.power_off()    
     
-    def simulate_input(self, name):
-        input = Input.Input.instances[name]
-        input.event()
-        return input    
-    
     def test_external_event(self):
-        self.assertRaises(AttributeError, lambda: self.simulate_input("External_event"))
+        self.assertRaises(AttributeError, lambda: simulate_input("External_event"))
         input = Input.Input.instances["External_event_2"]
         input.set_external_event(external, x=1, y=2)
-        self.assertRaises(AttributeError, lambda: self.simulate_input("External_event"))
+        self.assertRaises(AttributeError, lambda: simulate_input("External_event"))
         
     def test_Start(self):            
-        ## Test Start ##
         # Sans credit
         Data_Save.set_data("credit", 0)
-        self.simulate_input('Start')
+        simulate_input('Start')
         self.assertEqual(infos_game['status'], General_Status.ATTRACT_MODE)
         
         # Avec credit
         Data_Save.set_data("credits", 5)
-        self.simulate_input('Start')
+        simulate_input('Start')
         self.assertEqual(infos_game['status'], General_Status.START)
         self.assertEqual(infos_game['nb_players'], 1)
 
         for i in range(3):
-            self.simulate_input('Start')
+            simulate_input('Start')
             if i == 3:
                 self.assertEqual(infos_game['nb_players'], i+1)
             else:
@@ -126,11 +139,11 @@ class Test(unittest.TestCase):
         pass
         
     def test_Test(self):
-        self.simulate_input('Test')
+        simulate_input('Test')
         self.assertEqual(Common.infos_game['status'], Common.General_Status.TEST)
         
     def test_Slam(self):
-        self.simulate_input('Slam')
+        simulate_input('Slam')
         self.assertEqual(Common.infos_game['status'], Common.General_Status.SLAM)
 
 class Test_Playfield(Test):
@@ -143,15 +156,15 @@ class Test_Playfield(Test):
         pass 
     
     def test_Point(self):
-        input = self.simulate_input('Point')
+        input = simulate_input('Point')
         self.assertEqual(Common.get_all_scores()[0], input.points)
         
     def test_Point_Light(self):
-        input = self.simulate_input('Point_Light')
+        input = simulate_input('Point_Light')
         pts = input.points[0]
         self.assertEqual(Common.get_all_scores()[0],  pts)
         input.lamp.set_level(1)
-        self.simulate_input('Point_Light')
+        simulate_input('Point_Light')
         pts += input.points[1]
         self.assertEqual(Common.get_all_scores()[0], pts)
         
@@ -163,19 +176,19 @@ class Test_Playfield(Test):
         while off == False or on == False:
             level = input.lamp.get_level(ignore_blink=True)    
             if level == 0 and off == False: 
-                self.simulate_input('Point_Light_Blink')
+                simulate_input('Point_Light_Blink')
                 off = True
             if level == 1 and on == False: 
-                self.simulate_input('Point_Light_Blink')
+                simulate_input('Point_Light_Blink')
                 on = True
                 
         self.assertEqual(Common.get_all_scores()[0], input.points[0] + input.points[1])
     
     def test_Spinner(self):
         input = Input.Input.instances['Spinner']
-        self.simulate_input('Spinner')
+        simulate_input('Spinner')
         input.lamp.set_level(1)
-        self.simulate_input('Spinner')
+        simulate_input('Spinner')
         self.assertEqual(input.lamp.get_level(), 0)
           
     def test_Target_Bank(self):
@@ -185,19 +198,19 @@ class Test_Playfield(Test):
         self.assertEqual(target_0.lamp.get_level(), "blink")
         self.assertEqual(target_1.lamp.get_level(), "blink")
         
-        input = self.simulate_input(target_0.name)
+        input = simulate_input(target_0.name)
         pts = input.points[0]
         self.assertEqual(target_0.lamp.get_level(), 1)
         
-        input = self.simulate_input(target_1.name)
+        input = simulate_input(target_1.name)
         pts += input.points[0]
         self.assertEqual(target_1.lamp.get_level(), 1)
         
         self.assertEqual(target_1.parent.is_complete(), True)
         
-        input = self.simulate_input(target_0.name)
+        input = simulate_input(target_0.name)
         pts += input.points[1]
-        input = self.simulate_input(target_0.name)
+        input = simulate_input(target_0.name)
         pts += input.points[1]
         
         self.assertEqual(Common.get_all_scores()[0], pts)
@@ -206,9 +219,9 @@ class Test_Playfield(Test):
         target_0 = Input.Input.instances['0_Drop_Target_Bank']
         target_1 = Input.Input.instances['1_Drop_Target_Bank']
         
-        self.simulate_input(target_1.name)
+        simulate_input(target_1.name)
         self.assertEqual(target_1.level, 1)
-        self.simulate_input(target_0.name) # Reset execute apres la chute de la derniere cible
+        simulate_input(target_0.name) # Reset execute apres la chute de la derniere cible
         self.assertEqual(target_0.level, 0)
         
     def test_Target_Bank_2_states(self):
@@ -218,22 +231,22 @@ class Test_Playfield(Test):
         self.assertEqual(target_0.lamp.get_level(), 0)
         self.assertEqual(target_0.lamp.get_level(), 0)
         
-        input = self.simulate_input(target_1.name)
+        input = simulate_input(target_1.name)
         pts = input.points[0]
-        input = self.simulate_input(target_0.name)
+        input = simulate_input(target_0.name)
         pts += input.points[0]
         self.assertEqual(target_0.lamp.get_level(), "blink")
         self.assertEqual(target_1.lamp.get_level(), "blink")
-        input = self.simulate_input(target_1.name)
+        input = simulate_input(target_1.name)
         pts += input.points[0]
-        input = self.simulate_input(target_0.name)
+        input = simulate_input(target_0.name)
         pts += input.points[0]
         self.assertEqual(target_0.lamp.get_level(), 1)
         self.assertEqual(target_1.lamp.get_level(), 1)
         self.assertEqual(target_1.parent.is_complete(), True)
-        input = self.simulate_input(target_1.name)
+        input = simulate_input(target_1.name)
         pts += input.points[1]
-        input = self.simulate_input(target_0.name)
+        input = simulate_input(target_0.name)
         pts += input.points[1]
         self.assertEqual(Common.get_all_scores()[0], pts)       
         

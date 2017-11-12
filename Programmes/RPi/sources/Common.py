@@ -80,9 +80,14 @@ def start_new_game():
         
 def power_off():
     stop_managers()
-    
-    for input in Input.Input_Playfield.instances.values():
-        input.stop()
+
+    for lamp in Output.Lamp.instances.values():
+        if lamp.get_level() == "blink":
+            lamp.blink(0)
+        
+    for display in Display.Player.instances.values():
+        if display.is_blinking() == True:
+            display.blink(0)
 
 def stop_managers():
     Display.manager.stop()
@@ -108,7 +113,7 @@ def get_credits():
 def add_player():
     if infos_game['nb_players'] < 4:
         infos_game['nb_players'] += 1
-        Display.Player.instances["P" + str(infos_game['nb_players'])].set_double_zero()
+        Display.Player.instances[infos_game['nb_players']].set_double_zero()
         return True
     else:
         return False
@@ -156,10 +161,10 @@ def add_points_current_player(points):
             set_awards(replay)
 
 def get_display_player():
-    number = str(infos_game['current_player'])
-    return Display.Player.instances["P" + number]
+    number = infos_game['current_player']
+    return Display.Player.instances[number]
 
-def set_next_ball(self):
+def set_next_ball():
     infos_game['current_ball'] += 1
     Display.Display.instances['Status'].set_status(infos_game['current_ball'])    
     
@@ -177,7 +182,7 @@ def reset_target_drop():
 def get_all_scores():
     scores = list()
     for i in range(infos_game['nb_players']):
-        scores.append(Display.Player.instances["P" + str(i+1)].get_value())
+        scores.append(Display.Player.instances[i+1].get_value())
     return scores
         
 def save_scores():

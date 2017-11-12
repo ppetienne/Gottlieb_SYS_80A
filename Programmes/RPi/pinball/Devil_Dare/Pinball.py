@@ -74,7 +74,7 @@ def th_show_HGTD_attract_mode():
             cpt += 1
 
 def power_on():
-    Common.power_pinball()
+    Common.power_on()
         
 def attract_mode():
     Common.attract_mode()
@@ -82,32 +82,29 @@ def attract_mode():
     th = threading.Thread(target=th_show_HGTD_attract_mode)
     th.start()
 
-def end_pinball():
-    Common.stop_pinball()
+def power_off():
+    Common.power_off()
 
 
 ################################################################################
 # Fonctions communes
-def add_bonus_current_player():
+def add_bonus_current_player(points):
     Display.Display.instances['Bonus'].set_value(points)
 
-def get_bonus():
+def get_bonus_current_player():
     return Display.Display.instances['Bonus'].get_value()
 
-def set_Ball_Save(level):
-    Output.Solenoid.instances["Ball Save Relay"].set_level(level)
+def set_Ball_Save(value):
+    Output.Solenoid.instances["Ball Save Relay"].set_level(value)
     
 ################################################################################  
 # Evenements externes
-def event_common_Drop_Target(targets):
-    complete = False
+def event_common_Drop_Target(target_bank):
     add_bonus_current_player(400) # a definir
-    if targets.is_completed():
-        set_Ball_Save(1)
-        complete = True
+    set_Ball_Save(1)
     
-    nb_targets_5_complete = [targets for targets in Input.Target_Bank_Drop.instances if (len(targets.children) == 5 and targets.is_complete() == True)]
-    targets_3_complete = [targets for targets in Input.Target_Bank_Drop.instances if (len(targets.children) == 3 and targets.is_complete() == True)]
+    nb_targets_5_complete = [targets for targets in Input.Target_Bank_Drop.instances.values() if (len(targets.children) == 5 and targets.is_complete() == True)]
+    targets_3_complete = [targets for targets in Input.Target_Bank_Drop.instances.values() if (len(targets.children) == 3 and targets.is_complete() == True)]
     
     if nb_targets_5_complete == 2 and targets_3_complete == 1:
         Output.Lamp.instances["Right Inside Return Rollover"].set_level(1)
@@ -117,31 +114,25 @@ def event_common_Drop_Target(targets):
     
     elif nb_targets_5_complete == 1 and targets_3_complete == 1:
         Output.Lamp.instances["2X"].set_level(1)
-    
-    return complete
         
 def event_Top_Drop_Target():
     event_common_Drop_Target(Input.Target_Bank.instances["Top Drop Target Bank"])
         
 def event_Right_Drop_Target():
-    complete = event_common_Drop_Target(Input.Target_Bank.instances["Right Drop Target Bank"])
-    if complete == True :
-        Output.Lamp.instances["Hole Capture"].blink(1)
+    event_common_Drop_Target(Input.Target_Bank.instances["Right Drop Target Bank"])
+    Output.Lamp.instances["Hole Capture"].blink(1)
         
 def event_Left_Drop_Target():
-    complete = event_common_Drop_Target(Input.Target_Bank.instances["Left Drop Target Bank"])
-    if complete == True :
-        Output.Lamp.instances["Top Kicker Capture"].blink(1)
+    event_common_Drop_Target(Input.Target_Bank.instances["Left Drop Target Bank"])
+    Output.Lamp.instances["Top Kicker Capture"].blink(1)
 
 def event_Left_Top_Target():
-    if Input.Target_Bank.instances["Left Top Target Bank"].is_completed():
-        set_Ball_Save(1)
-        Output.Lamp.instances["Special"].set_level(1)
+    set_Ball_Save(1)
+    Output.Lamp.instances["Special"].set_level(1)
 
 def event_Right_Bottom_Target():
-    if Input.Target_Bank.instances["Right Bottom Target Bank"].is_completed():
-        set_Ball_Save(1)
-        Output.Lamp.instances['Extra Ball'].set_level(1)
+    set_Ball_Save(1)
+    Output.Lamp.instances['Extra Ball'].set_level(1)
 
 def event_Bottom_Left_Bottom_Target():
     Output.Lamp.instances['Right Outside Return Rollover'].set_level(1)
@@ -155,7 +146,7 @@ def event_Right_Top_Target():
 def event_Right_Outside_Rollover():
     if Output.Lamp.instances["Special"].get_level() == 1:
         Output.Lamp.instances["Special"].set_level(0)
-        Input.Target_Bank['Left Top Target Bank'].reset()    
+        add_bonus_current_player(5000)    
 
 def event_only_one_shot(lamp):
     lamp.set_level(0)
@@ -198,17 +189,17 @@ def event_OutHole():
         eject = False
         # todo lors du multiball
         if Output.Lamp.instances["Shoot Again"].get_level() != 1:
-            Display.Player.instances["P" + Common.infos_game['current_player']].blink(0)
+            Common.get_display_player().blink(0)
             multiplier = 1
             if Output.Lamp.instances["2X"].get_level() == 1:
                 multiplier = 2
             if Output.Lamp.instances["3X"].get_level() == 1:
                 multiplier = 3
-            Common.set_display_players(get_bonus()*multiplier)
+            Common.set_display_players(get_bonus_current_player()*multiplier)
             
-            if Input.Input_Playfield.instances["Hole"].value == 1:
+            if Input.Input_Playfield.instances["Hole"].get_level() == 1:
                 Input.Input_Playfield.instances["Hole"].eject_ball()
-            if Input.Input_Playfield.instances["Top_Ball_Kicker"].value == 1:
+            if Input.Input_Playfield.instances["Top Ball Kicker"].get_level() == 1:
                 Input.Input_Playfield.instances["Top_Ball_Kicker"].eject_ball()
                 
             if Common.infos_game['current_ball'] == Options.get_option('nb_balls') :
@@ -225,8 +216,8 @@ def event_OutHole():
                 else:
                     Common.infos_game['current_player'] += 1
                 eject = True
-                Common.set_current_ball_display()
-                Display.Player.instances["P" + Common.infos_game['current_player']].blink(1)
+                Common.set_next_ball()
+                Common.get_display_player().blink(1)
         else:
             eject = True
             
@@ -235,10 +226,7 @@ def event_OutHole():
             Common.flash_playfield_lamp(1, 0.1)
             time.sleep(2)
             Common.flash_playfield_lamp(0)
-            Input.Input_Playfield.instances["OutHole"].eject_ball()
-        
-def event_stop_blink_zero():
-    Display.Player.instances["P1"].blink_double_zero(0)
+            Input.Input_Playfield.instances["Outhole"].eject_ball()
     
 def event_Start():
     pass
@@ -248,7 +236,8 @@ def event_Tilt():
     
 def event_1st_Trough():
     #Common.infos_game['status'] = Common.General_Status.START
-    Input.Input_Playfield.set_external_unique_event(event_stop_blink_zero)
+    #Input.Input_Playfield.set_external_unique_event(event_stop_blink_zero)
+    pass
     
 def event_3rd_Trough():
     pass 
@@ -259,9 +248,9 @@ Input.Start(x=7, y=4, external_event=event_Start)
 Input.Test(x=7, y=0)
 Input.Slam(Contacts.conn.J5[10])
 Input.Tilt(x=7, y=5, external_event=event_Tilt)
-Input.Credit(x=7, y=1, name="Credit Left", value=Options.get_option('credit_left')), 
-Input.Credit(x=7, y=2, name="Credit Center", value=Options.get_option('credit_center'))
-Input.Credit(x=7, y=3, name="Credit Right", value=Options.get_option('credit_right'))
+Input.Credit(x=7, y=1, name="Credit Left", value=Options.get_option('credits')[0]), 
+Input.Credit(x=7, y=2, name="Credit Center", value=Options.get_option('credits')[1])
+Input.Credit(x=7, y=3, name="Credit Right", value=Options.get_option('credits')[2])
 
 ################################################################################
 # Input Playfield
@@ -287,7 +276,7 @@ for i in range(5):
 
 temp_targets = Input.Target_Bank(name="Left Top Target Bank", external_event=event_Left_Top_Target)
 for i in range(4):
-    Input.Target(x=2, y=i, parent=temp_targets, position_enfant=i, lamp_control=Output.Lamp_Control.instances["LD" + str(i+1)], lamp_latch=Output.Lamp_Latch.instances["DS12"], points=[500,2000])
+    Input.Target(x=2, y=i, parent=temp_targets, nb_states=2, position_enfant=i, lamp_control=Output.Lamp_Control.instances["LD" + str(i+1)], lamp_latch=Output.Lamp_Latch.instances["DS12"], points=[500,2000])
 
 if Options.get_option("nb_balls") == 3:
     nb_states = 1
@@ -323,16 +312,16 @@ Input.Point(x=6, y=3, name="Right Outside Rollover", points=5000, external_event
 Input.Point(x=2, y=4, name="Left Outside Rollover", points=10000)
                  
 Input.Point_Light(x=3, y=5, name="Right Outside Return Rollover", lamp_control=Output.Lamp_Control.instances["LD2"], lamp_latch=Output.Lamp_Latch.instances["DS5"], points=[500,3000])
-Input.Input_Playfield.instances["Right Outside Return Rollover"].set_external_event(event_Return_Rollover, Output.Lamp.instances['Right Outside Return Rollover']) 
+Input.Input_Playfield.instances["Right Outside Return Rollover"].set_external_event(event_Return_Rollover, lamp=Output.Lamp.instances['Right Outside Return Rollover']) 
 
 Input.Point_Light(x=3, y=4, name="Left Outside Return Rollover", lamp_control=Output.Lamp_Control.instances["LD2"], lamp_latch=Output.Lamp_Latch.instances["DS11"], points=[500,3000])
-Input.Input_Playfield.instances["Left Outside Return Rollover"].set_external_event(event_Return_Rollover, Output.Lamp.instances['Right Outside Return Rollover']) 
+Input.Input_Playfield.instances["Left Outside Return Rollover"].set_external_event(event_Return_Rollover, lamp=Output.Lamp.instances['Right Outside Return Rollover']) 
 
 Input.Point_Light(x=4, y=5, name="Right Inside Return Rollover", lamp_control=Output.Lamp_Control.instances["LD1"], lamp_latch=Output.Lamp_Latch.instances["DS11"], points=[500,3000])
-Input.Input_Playfield.instances["Right Inside Return Rollover"].set_external_event(event_Return_Rollover, Output.Lamp.instances['Right Outside Return Rollover']) 
+Input.Input_Playfield.instances["Right Inside Return Rollover"].set_external_event(event_Return_Rollover, lamp=Output.Lamp.instances['Right Outside Return Rollover']) 
 
 Input.Point_Light(x=4, y=4, name="Left Inside Return Rollover", lamp_control=Output.Lamp_Control.instances["LD1"], lamp_latch=Output.Lamp_Latch.instances["DS11"], points=[500,3000])
-Input.Input_Playfield.instances["Left Inside Return Rollover"].set_external_event(event_Return_Rollover, Output.Lamp.instances['Right Outside Return Rollover']) 
+Input.Input_Playfield.instances["Left Inside Return Rollover"].set_external_event(event_Return_Rollover, lamp=Output.Lamp.instances['Right Outside Return Rollover']) 
 
 Input.Point(x=6, y=1, name="Rollunder", points=5000, external_event=event_Rollunder)
 

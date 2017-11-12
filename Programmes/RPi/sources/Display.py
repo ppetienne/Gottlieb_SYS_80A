@@ -143,19 +143,21 @@ class Player(Display):
 			list_digits = 0
 		else:
 			list_digits = 1
-		super().__init__(7, "P" + str(position), segment_number, list_digits)
+		super().__init__(7, position, segment_number, list_digits)
 		self.__class__.instances[self.name] = self
 		self._th_blink = None 
 		self._end_th_blink = False
 	
 	def blink(self, level):
+		if self._th_blink != None:
+			self._end_th_blink = True
+			self._th_blink.join()
+			self._th_blink = None
+			
 		if level == 1: 
 			self._th_blink = threading.Thread(target=self._th_manage_blink)
-			self._th_blink.start()
 			self._end_th_blink = False
-		elif self._th_blink != None:
-			self._end_th_blink = True
-			self._th_blink = None
+			self._th_blink.start()
 			
 	def set_double_zero(self):
 		self.value = "00"
