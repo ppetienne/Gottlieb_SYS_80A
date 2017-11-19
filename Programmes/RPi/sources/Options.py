@@ -5,16 +5,19 @@ import threading
 filename = "options.json"
 path = os.path.dirname(os.path.realpath(__file__)) + '\\' + filename
 
+protect = threading.Semaphore()
+
 def get_all_options():
+    protect.acquire()
     with open(path) as options_file:    
         options = json.load(options_file)
+    protect.release()
     _check_all_options(options)
     return options
 
 def set_all_options(options_dict):
     _check_all_options(options_dict)
     _save_json(options)
-
 
 def get_option(name):  
     return get_all_options()[name]
@@ -26,9 +29,11 @@ def set_option(name, value):
     _save_json(options)
 
 def _save_json(options_dict):
+    protect.acquire()
     with open(path, 'w') as options_file:
         json.dump(options_dict, options_file, sort_keys=True, indent=4)
-        
+    protect.release()
+    
 def _check_all_options(options_dict):
     for key in options_dict.keys():
         _check_option(key, options_dict[key])
@@ -38,7 +43,7 @@ def _check_option(name, value):
     def raise_exception():
         raise AttributeError(str_exception + "est incorrect (valeur: " + value + ")")
     
-    if (name not in ['nb_balls', 'hardware', 'maximum_credits', 'playfield_special', 'high_play_award', 'match', 'replay_limit', 'novelty', 'game_mode', 'high_scores_replay'] 
+    if (name not in ['pinball_name', 'nb_balls', 'hardware', 'maximum_credits', 'playfield_special', 'high_play_award', 'match', 'replay_limit', 'novelty', 'game_mode', 'high_scores_replay'] 
         and "credit" not in name):
         raise AttributeError(str_exception + "n'existe pas")
     
@@ -69,6 +74,7 @@ def _check_option(name, value):
 
 def reset_options():
     options = dict()
+    options["pinball_name"] = "Devil_Dare"
     options["hardware"] = False
     options["nb_balls"] = 3
     options["maximum_credits"] = 99

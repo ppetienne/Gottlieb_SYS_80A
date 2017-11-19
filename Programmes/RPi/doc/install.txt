@@ -1,0 +1,3 @@
+2017-09-07-raspbian-stretch-lite.img
+sudo apt-get install python-3 pip
+export PATHS_FROM_ECLIPSE_TO_PYTHON=[('C:\Users\Pierre\eclipse-workspace\RemoteSystemsTempFiles\192.168.0.41\home', '/home')]

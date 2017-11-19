@@ -82,6 +82,10 @@ def attract_mode():
     th = threading.Thread(target=th_show_HGTD_attract_mode)
     th.start()
 
+def game_over_mode():
+    Common.reset_target_drop()
+    attract_mode()
+     
 def power_off():
     Common.power_off()
 
@@ -206,9 +210,7 @@ def event_OutHole():
                 
                 if Common.infos_game['current_player'] == Common.infos_game['nb_players']:
                     Common.save_scores()
-                    Common.infos_game['status'] = Common.General_Status.ATTRACT_MODE
-                    Common.reset_target_drop()
-                    attract_mode()  
+                    game_over_mode() 
             else:
                 if Common.infos_game['current_player'] ==  Common.infos_game['nb_players']:
                     Common.infos_game['current_player'] = 1
@@ -344,6 +346,3 @@ Input.OutHole(x=5, y=5, name="Outhole", external_event=event_OutHole)
 # Display
 Display.Timer()
 Display.Bonus()
-
-if __name__ == '__main__':
-    power_on()

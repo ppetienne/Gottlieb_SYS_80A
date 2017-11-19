@@ -7,21 +7,28 @@
 import os
 import pickle
 import time
+import threading
 
 path = os.path.dirname(os.path.realpath(__file__)) + '\\pickle.dat'
 
+protect = threading.Semaphore()
+
 def get_data(name):
-	return get_all_data()[name]
+	return get_all_datas()[name]
 
 def set_data(name, value):
-	data = get_all_data()
+	data = get_all_datas()
 	data[name] = value
+	protect.acquire()
 	with open(path, "wb") as f:
 		pickle.dump(data, f)
-
-def get_all_data():
+	protect.release()
+	
+def get_all_datas():
+	protect.acquire()
 	with open(path, "rb") as f:
 		data = pickle.load(f)
+	protect.release()
 	return data
 
 def add_score(score, time):
@@ -41,7 +48,10 @@ def add_scores(scores, time):
 
 def add_to_parameter(name):
 	set_data(name, get_data(name)+1)
-		
+
+def reset_data(name):
+	pass
+ 
 def add_tilt():
 	add_to_parameter("total tilt")
 
@@ -86,4 +96,3 @@ def reset_data():
 		
 if not os.path.isfile(path):
 	reset_data()
-	

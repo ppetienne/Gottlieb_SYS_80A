@@ -172,7 +172,7 @@ class Lamp():
 		begin_time = time.time()
 		if self.position % 2 == 0: # Pour faire flasher les lamps en quinconce
 			time.sleep(speed/2)
-		time_refresh = 0.01
+		time_refresh = 0.001
 		cpt = 0
 		while self._end_th_blink == False:
 			if cpt == int(speed/time_refresh) :
@@ -186,6 +186,7 @@ class Lamp():
 			else:
 				cpt += 1
 				time.sleep(time_refresh)
+		self.set_level(0)
 ################################################################################
 class Short_Sound():
 	def __init__(self, file):

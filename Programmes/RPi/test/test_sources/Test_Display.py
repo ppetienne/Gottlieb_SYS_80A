@@ -29,7 +29,7 @@ class Test(unittest.TestCase):
         self.assertEqual(display.value, "00")
         
     def test_Player(self):
-        display = Display.Display.instances["P1"]
+        display = Display.Display.instances[1]
         display.set_value(1)
         display.blink(1)
         self.assertEqual(display.is_blinking(), True)

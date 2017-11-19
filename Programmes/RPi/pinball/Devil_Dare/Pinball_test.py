@@ -9,21 +9,20 @@ import Options
 import Output
 import time
 
-def simulate_input(name):
-    input = Input.Input.instances[name]
-    input.event()
-    return input
+import Simulators
+
+Simulators.Input_Sim.generate_input_simulator(Input.Input.instances, Input.Input_Matrix.instances, Input.manager.get_total_time_wait())
 
 def simulate_target_bank_complete(name, nb=1):
     for i in range(nb):
         for child in Input.Target_Bank.instances[name].children:
-            simulate_input(child.name)
+            Simulators.Input_Sim.simulate(child.name)
             
 class Test(unittest.TestCase):
     def setUp(self):
         Pinball.power_on()
-        simulate_input('Credit Left')
-        simulate_input('Start')
+        Simulators.Input_Sim.simulate('Credit Left')
+        Simulators.Input_Sim.simulate('Start')
         
     def tearDown(self):
         Pinball.power_off()
@@ -35,7 +34,7 @@ class Test(unittest.TestCase):
         self.assertEqual(Output.Lamp.instances['Special'].get_level(), 1)
         
         bonus = Pinball.get_bonus_current_player()
-        simulate_input("Right Outside Rollover")
+        Simulators.Input_Sim.simulate("Right Outside Rollover")
         self.assertEqual(Pinball.get_bonus_current_player(), bonus + 5000)    
     
     def test_Extra_Ball(self):
@@ -44,7 +43,7 @@ class Test(unittest.TestCase):
         self.assertEqual(Output.Lamp.instances['Extra Ball'].get_level(), 1)
         
         self.assertEqual(Output.Lamp.instances['Shoot Again'].get_level(), 0)
-        simulate_input("Rollunder")
+        Simulators.Input_Sim.simulate("Rollunder")
         self.assertEqual(Output.Lamp.instances['Shoot Again'].get_level(), 1)
         
     def test_Multi_Ball(self):

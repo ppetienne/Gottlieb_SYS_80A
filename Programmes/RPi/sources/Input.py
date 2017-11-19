@@ -13,7 +13,7 @@ import Data_Save
 from Event import event
 import Common
 
-LISTEN_DELAY_INPUT = 0.001
+LISTEN_DELAY_INPUT = 0.002
 
 ################################################################################
 
@@ -45,7 +45,7 @@ class Input():
             self.name = name
         else:
             raise Exception("L'input " + name + " est deja existant")
-        
+
         self.normal_state = normal_state
         self.state = normal_state
         Input.instances[name] = self 
@@ -67,12 +67,14 @@ class Input():
 
 ################################################################################        
 class Input_Matrix(Input):
+    instances = dict()
     def __init__(self, x, y, **args):
         """ Construit un objet Input
         Keyword arguments:
         *** -- ***
         """  
         super().__init__(get_level_object=Matrix_Point(x, y, self), **args)     
+        Input_Matrix.instances[self.name] = self
 
 ################################################################################        
 class Input_Playfield(Input_Matrix):
@@ -192,7 +194,21 @@ class Test(Input_Matrix):
                 
     def start_pressed(self):
         pass        
-
+    
+    def get_list_tests(self):
+        dict_tests = dict()
+        dict_tests["Matrix"] = [input.name for input in Input_Matrix.instances.values()]
+        dict_tests["Lamp"] = [lamp.name for lamp in Output.Lamp.instances.values()]
+        dict_tests["Solenoid"] = [sol.name for sol in Output.Solenoid.instances.values()]
+        dict_tests["Display"] = [display.name for display in Display.Display.instances.values()]
+        return dict_tests
+    
+    def start_test(self, name):
+        pass
+    
+    def test_one_io(self, name_test, name_io):
+        pass
+    
 ################################################################################
 class Credit(Input_Matrix):
     def __init__(self, value, name, **args):
@@ -238,9 +254,6 @@ class Point_Light(Input_Playfield):
     def tilt(self):
         self.lamp.reset()
         super().tilt()
-    
-    def new_game(self):
-        super().new_game()
             
     def event(self):
         if self.lamp.get_level() == "blink" or self.lamp.get_level() == 0:
@@ -270,7 +283,7 @@ class Point_Light_Blink(Point_Light):
             points = self.points[0]
             
         Common.add_points_current_player(points)
-        super().event()
+        Input_Playfield.event(self)
         
 ################################################################################
 class Target(Point_Light):
@@ -424,7 +437,10 @@ class Manager():
         *** -- ***
         """
         self._th = None
-        
+    
+    def get_total_time_wait(self):
+        return LISTEN_DELAY_INPUT*len(Input.instances)
+    
     def start(self):
         self._th = threading.Thread(target=self._th_listen_input)
         self._end_th = False
@@ -436,6 +452,7 @@ class Manager():
         
     def _th_listen_input(self):
         while self._end_th == False:
+            #timer_begin = time.time()
             for input in Input.instances.values():
                 if input.activated == True:    
                     new_state = input.get_level_object.get_level()
@@ -444,6 +461,6 @@ class Manager():
                         if new_state != input.normal_state :
                             input.event()
                 else:
-                    time.sleep(LISTEN_DELAY_INPUT)
-                        
+                    time.sleep(LISTEN_DELAY_INPUT)  
+            #print(time.time() - timer_begin)       
 manager = Manager()       

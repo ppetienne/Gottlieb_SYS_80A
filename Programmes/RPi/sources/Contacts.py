@@ -60,12 +60,7 @@ if Options.get_option("hardware") == True:
 		def get_level(self):
 			return self.io.get_pin_val(self.pos_io)
 else:	
-	class Pin_Sim():				
-		def set_level(self, value):
-			pass
-		
-		def get_level(self):
-			return 0
+	from Simulators import Pin_Sim
 		
 ################################################################################
 class Connectors():
