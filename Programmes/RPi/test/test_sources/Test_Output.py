@@ -12,8 +12,15 @@ class Test(unittest.TestCase):
     def test_Lamp_Control(self):
         self.assertEqual(len(Output.Lamp_Control.instances), 4)
     
-    def test_Lamp(self): 
-        lamp = Output.Lamp(name="Test", lamp_control=Output.Lamp_Control.instances["LD1"], lamp_latch=Output.Lamp_Latch.instances["DS1"])
+    def test_Output_Driver(self): 
+        output = Output.Output_Driver(name="Test", lamp_control=Output.Lamp_Control.instances[1], lamp_latch=Output.Lamp_Latch.instances[1])
+        output.set_level(1)
+        self.assertEqual(output.get_level(), 1)
+        output.set_level(0)
+        self.assertEqual(output.get_level(), 0)
+        
+    def test_Lamp(self):
+        lamp = Output.Lamp(name="Test", lamp_control=Output.Lamp_Control.instances[4], lamp_latch=Output.Lamp_Latch.instances[1])
         lamp.set_level(1)
         self.assertEqual(lamp.get_level(), 1)
         lamp.set_level(0)
@@ -44,14 +51,16 @@ class Test(unittest.TestCase):
             timer = time.time() - begin_time
         self.assertTrue(timer < 2) 
         lamp.reset()
-         
+        Output.Lamp.test(0.01)
+        
     def test_Solenoid(self):
-        sol = Output.Solenoid.instances["Sol 9"] # arbitraire
-        sol.set_new_name("test")
+        sol = Output.Solenoid.instances[9] # arbitraire
+        sol.name = "test"
         self.assertEqual(sol.name, "test")
-        sol.activate(1)
-        sol.activate(0) # Pas possible de tester, juste verifier qu'aucune exception remonte
+        sol.set_level(1)
+        sol.set_level(0) # Pas possible de tester, juste verifier qu'aucune exception remonte
         sol.pulse()
+        Output.Solenoid.test(0.001)
     
     def test_Sound(self):
         #Sequence : background > short_sound > nouveau short_sound avant fin ancien > background)

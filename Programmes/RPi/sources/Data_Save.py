@@ -13,18 +13,25 @@ path = os.path.dirname(os.path.realpath(__file__)) + '\\pickle.dat'
 
 protect = threading.Semaphore()
 
-def get_data(name):
-	return get_all_datas()[name]
+def get(name):
+	return [data for data in get_all() if data["name"] == name][0]["value"]
 
-def set_data(name, value):
-	data = get_all_datas()
-	data[name] = value
-	protect.acquire()
-	with open(path, "wb") as f:
-		pickle.dump(data, f)
-	protect.release()
+def get_name_by_pos(pos):
+	return [data for data in get_all() if data["name"] == name][0]["name"]
+
+def get_by_pos(pos):
+	return get_all()[pos]["value"]
+
+def set_by_pos(pos, value):
+	set(get_name_by_pos(pos), value)
+
+def set(name, value):
+	infos = get_all()
+	pos = [i for i in range(len(infos)) if infos[i]["name"] == name][0]
+	infos[pos]["value"] = value
+	_save_pickle(infos)
 	
-def get_all_datas():
+def get_all():
 	protect.acquire()
 	with open(path, "rb") as f:
 		data = pickle.load(f)
@@ -32,25 +39,27 @@ def get_all_datas():
 	return data
 
 def add_score(score, time):
-	average_score = get_data("average score")
-	average_time = get_data("average time")
-	total_play = get_data("total play")
+	average_time = get("average time")
+	total_play = get("total play")
 	
-	new_average_score = (average_score*total_play + score)/(total_play + 1)
 	new_average_time = (average_time*total_play + time)/(total_play + 1)
 	add_to_parameter("total play")
-	set_data("average score", new_average_score)
-	set_data("average time", new_average_time)
+	set("average time", new_average_time)
 
 def add_scores(scores, time):
 	for score in scores:
 		add_score(score, time/len(scores))
 
 def add_to_parameter(name):
-	set_data(name, get_data(name)+1)
+	set(name, get(name)+1)
 
-def reset_data(name):
-	pass
+def reset(name):
+	set(name, 0)
+	if name == "game percentage":
+		set("total play", 0)
+		set("total replay", 0)
+	elif name == "average time":
+		set("total play", 0)
  
 def add_tilt():
 	add_to_parameter("total tilt")
@@ -64,35 +73,51 @@ def add_replay():
 def add_extra_ball():
 	add_to_parameter("total extra ball") 
 
+def add_coin(position_name):
+	add_to_parameter("total coin " + position_name) 
+
+def get_high_score_level():
+	return [get("first high score level"), get("second high score level"), get("third high score level")]
+
 def get_time_hgtd():
-	if get_data("time HGTD") == 0:
+	if get("time HGTD") == 0:
 		return 0
 	else:
-		return time.time() - get_data("time HGTD")
+		return time.time() - get("time HGTD")
 
 def check_hgtd(value):
-	if value >= get_data("HGTD"):
-		set_data("HGTD", value)
-		set_data("time HGTD", time.time())
+	if value >= get("HGTD"):
+		set("HGTD", value)
+		set("time HGTD", time.time())
 		return True
 	else:
 		return False
+
+def _save_pickle(infos):
+	protect.acquire()
+	with open(path, "wb") as f:
+		pickle.dump(infos, f)
+	protect.release()
 	
-def reset_data():
-	data = dict()
-	data["HGTD"] = 0
-	data["credits"] = 0
-	data["total play"] = 0
-	data["average score"] = 0
-	data["total replay"] = 0
-	data["total extra ball"] = 0
-	data["total tilt"] = 0
-	data["total slam"] = 0
-	data["time HGTD"] = 0
-	data["average time"] = 0
+def reset():
+	infos = list()
+	infos.append({"name":"total coin left", "value":0})
+	infos.append({"name":"total coin center", "value":0})
+	infos.append({"name":"total coin right", "value":0})
+	infos.append({"name":"total play", "value":0})
+	infos.append({"name":"total replay", "value":0})
+	infos.append({"name":"game percentage", "value":0})
+	infos.append({"name":"total extra ball", "value":0})
+	infos.append({"name":"total tilt", "value":0})
+	infos.append({"name":"total slam", "value":0})
+	infos.append({"name":"time HGTD", "value":0})
+	infos.append({"name":"first high score level", "value":1500000})
+	infos.append({"name":"second high score level", "value":1000000})
+	infos.append({"name":"third high score level", "value":500000})
+	infos.append({"name":"HGTD", "value":0})
+	infos.append({"name":"average time", "value":0})
 	
-	with open(path, "wb") as f:		
-		pickle.dump(data, f)
+	_save_pickle(infos)
 		
 if not os.path.isfile(path):
-	reset_data()
+	reset()

@@ -8,23 +8,13 @@ from Contacts import conn
 import threading
 import time
 from Event import event
-import Data_Save
+import Options
 
 REFRESH_DELAY_DISPLAY = 0.005
 
 class Display():
 	instances = dict()
 	event_refresh = event.Event()
-	
-	@property
-	def value(self):
-		return self._value
-	@value.setter
-	def value(self, value):
-		if len(value) > self.nb_digits:
-			raise Exception("La valeur a afficher est plus grande que la taille de l'afficheur")
-		else:
-			self._value = value
 	
 	def __init__(self, nb_digits, name, segment, list_digits, default_val=""):
 		""" Construit un objet Display
@@ -39,21 +29,34 @@ class Display():
 		self.default_val = default_val
 		Display.instances[name] = self
 	
-	def set_value(self, value, increment=True):
-		if increment == True and self.value != "" and int(self.value) > 0:
-			self.value = str(int(value) + int(self.value))
-		else:
-			self.value = str(value)
+	def test(wait_time):
+		for display in Display.instances.values():
+			str_val = ""
+			for i in range(display.nb_digits):
+				for i in range(10):
+					display.set_value(str(i) + str_val)
+					time.sleep(wait_time)
+				str_val += " "
+					
+	def set_value(self, value):
+		self._value = value
 	
-	def get_value(self):
-		if self.value == "":
-			return None
+	def set_int_value(self, value, increment=False):
+		if increment == True and self.get_value().isdigit() == True:
+			new_val = value + int(self.get_value())
 		else:
-			return int(self.value)
+			new_val = value
+		self.set_value(str(new_val))
+			 
+	def get_value(self):
+		return self._value
+
+	def get_int_value(self):
+		return int(self.get_value())
 	
 	def refresh(self):
 		cpt = 0
-		val = self.value # Permet de sauvegarder en local la variable pour que d'autres thread la modifie sans risque
+		val = self.get_value() # Permet de sauvegarder en local la variable pour que d'autres thread la modifie sans risque
 		for i in range(len(val)):
 			digits.set_digit(self.list_digits, i)
 			segments.set_segment(val[-(i+1)], self.segment)
@@ -68,8 +71,11 @@ class Display():
 		value = ""
 		for i in range(self.nb_digits):
 			value += "0"
-		self.value = value
-			
+		self.set_value(value)
+	
+	def init_val(self):
+		self.set_value(self.default_val)
+		
 ################################################################################		
 class Segments():
 	dict_val_seg = {"1":[8],
@@ -160,7 +166,7 @@ class Player(Display):
 			self._th_blink.start()
 			
 	def set_double_zero(self):
-		self.value = "00"
+		self.set_value("00")
 	
 	def is_blinking(self):
 		if self._th_blink != None and self._th_blink.is_alive():
@@ -169,13 +175,13 @@ class Player(Display):
 			return False
 		
 	def _th_manage_blink(self):
-		init_value = self.value
+		init_value = self.get_value()
 		while self._end_th_blink == False:
-			self.set_value(init_value, increment=False)
+			self.set_value(init_value)
 			time.sleep(0.2)
-			self.set_value("", increment=False)
+			self.set_value("")
 			time.sleep(0.2)
-		self.value = init_value 
+		self.set_value(init_value)
 			
 for i in range(1, 5):
 	Player(i)
@@ -214,19 +220,20 @@ class Status(Display):
 		"""
 		segment_number = 2
 		list_digits = 4
-		super().__init__(4, "Status", segment_number, list_digits, default_val=str(self._get_credit()) + "  ")
-	
+		super().__init__(4, "Status", segment_number, list_digits, default_val="0  ")
+		self.set_credit(self.get_credit())
+		
 	def attract_mode(self):
-		self.value = str(self._get_credit()) + "  "
+		self.set_value(str(self.get_credit()) + "  ")
 		
 	def set_credit(self, value, increment=False):
 		if increment == True:
-			new_value = self._get_credit() + value
+			new_value = self.get_credit() + value
 		else:
 			new_value = value
-		self.value = str(new_value) + self._get_status_str()
+		self.set_value(str(new_value) + self._get_status_str())
 		
-		Data_Save.set_data("credits", new_value)
+		Options.set("credits", new_value)
 		
 	def set_status(self, value):
 		if value < 10:
@@ -234,13 +241,13 @@ class Status(Display):
 		else:
 			temp_val = str(int(value/10)) + str(int(value%10))
 			
-		self.value = str(self._get_credit()) + temp_val
+		self.set_value(str(self.get_credit()) + temp_val)
 		
-	def _get_credit(self):
-		return Data_Save.get_data("credits")
+	def get_credit(self):
+		return Options.get("credits")
 	
 	def _get_status_str(self):
-		return self.value[-2] + self.value[-1]
+		return self.get_value()[-2] + self.get_value()[-1]
 	
 Status()
 ################################################################################

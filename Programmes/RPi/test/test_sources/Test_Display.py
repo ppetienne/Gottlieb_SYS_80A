@@ -19,25 +19,26 @@ class Test(unittest.TestCase):
         
     def test_Display(self):
         display = Display.Display.instances["Test"]
-        display.set_value(1)
-        self.assertEqual(display.get_value(), 1)
-        display.set_value(1)
-        self.assertEqual(display.get_value(), 2)
-        display.set_value(1, increment=False)
-        self.assertEqual(display.get_value(), 1)
+        display.set_int_value(1, increment=True)
+        self.assertEqual(display.get_int_value(), 1)
+        display.set_int_value(1, increment=True)
+        self.assertEqual(display.get_int_value(), 2)
+        display.set_int_value(1)
+        self.assertEqual(display.get_int_value(), 1)
         display.set_all_zero()
-        self.assertEqual(display.value, "00")
+        self.assertEqual(display.get_value(), "00")
+        Display.Display.test(0.001)
         
     def test_Player(self):
         display = Display.Display.instances[1]
-        display.set_value(1)
+        display.set_int_value(1)
         display.blink(1)
         self.assertEqual(display.is_blinking(), True)
         display.blink(0)
         self.assertEqual(display.is_blinking(), False)
-        self.assertEqual(display.get_value(), 1)
+        self.assertEqual(display.get_int_value(), 1)
         display.set_all_zero()
-        self.assertEqual(display.value, "0000000")
+        self.assertEqual(display.get_value(), "0000000")
         
     def test_Bonus(self):
         pass
@@ -48,13 +49,13 @@ class Test(unittest.TestCase):
     def test_Status(self):
         display = Display.Display.instances["Status"]
         display.set_credit(10)
-        self.assertEqual(display.value, "10  ")
+        self.assertEqual(display.get_value(), "10  ")
         display.set_credit(5)
-        self.assertEqual(display.value, "5  ")
+        self.assertEqual(display.get_value(), "5  ")
         display.set_status(10)
-        self.assertEqual(display.value, "510")
+        self.assertEqual(display.get_value(), "510")
         display.set_status(5)
-        self.assertEqual(display.value, "5 5")
+        self.assertEqual(display.get_value(), "5 5")
         
         
 ####################################################################################################################################

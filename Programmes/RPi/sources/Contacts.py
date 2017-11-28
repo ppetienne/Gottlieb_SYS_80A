@@ -6,8 +6,37 @@
 #
 ################################################################################
 import Options
+from Event import event
 
-if Options.get_option("hardware") == True:
+class Pin():
+	def __init__(self, pin_hard=None):
+		self.pin_hard = pin_hard
+		self.pin_sim = Pin_Sim()
+	
+	def set_level(self, value):
+		if self.pin_hard != None :
+			self.pin_hard.set_level(value)
+		self.pin_sim.set_level(value)
+	
+	def get_level(self):
+		level = self.pin_sim.get_level()
+		if self.pin_hard != None and level == 0:
+			level = self.pin_hard.get_level()
+		return level
+	
+class Pin_Sim(Pin):
+	def __init__(self):
+		self.value = 0
+		self.event_set_value = event.Event()
+		
+	def set_level(self, value):
+		self.value = value
+		self.event_set_value.fire(value)
+	
+	def get_level(self):
+		return self.value
+	
+if Options.get("hardware") == True:
 	import RPi.GPIO as GPIO
 	from I2C_Master import I2C_RPi
 	from I2C_Components import PCF8575
@@ -21,14 +50,14 @@ if Options.get_option("hardware") == True:
 	
 	GPIO.setwarnings(False)
 	GPIO.setmode(GPIO.BOARD)
-
-	class Pin_IO_I2C():
+			
+	class Pin_IO_I2C(Pin):
 		""" Represente une pin d'un connecteur de la carte CM """
 		def __init__(self, pos_io, io, mode):
 			""" Construit un objet Display
 			Keyword arguments:
 			*** -- ***
-			"""
+			"""  
 			self.io = io
 			self.pos_io = pos_io
 			self.io.set_pin_mode(self.pos_io, mode)
@@ -39,7 +68,7 @@ if Options.get_option("hardware") == True:
 		def get_level(self):
 			return self.io.get_pin_val(self.pos_io)
 	################################################################################	
-	class Pin_GPIO():
+	class Pin_GPIO(Pin):
 		""" Represente une pin d'un connecteur de la carte CM """
 		def __init__(self, pin_GPIO, mode):
 			""" Construit un objet Display
@@ -59,8 +88,6 @@ if Options.get_option("hardware") == True:
 		
 		def get_level(self):
 			return self.io.get_pin_val(self.pos_io)
-else:	
-	from Simulators import Pin_Sim
 		
 ################################################################################
 class Connectors():
@@ -71,12 +98,12 @@ class Connectors():
 		*** -- ***
 		"""
 		def instanciate_new_pin(type="IO_I2C", *args):
-			if Options.get_option("hardware") == False:
-				return Pin_Sim()
+			if Options.get("hardware") == False:
+				return Pin()
 			elif type == "GPIO":
-				return Pin_GPIO(*args)
+				return Pin(Pin_GPIO(*args))
 			elif type == "IO_I2C":
-				return Pin_IO_I2C(*args)
+				return Pin(Pin_IO_I2C(*args))
 			else:
 				raise Exception("Type pin inexistant")
 		

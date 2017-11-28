@@ -12,8 +12,10 @@ import Options
 import Data_Save
 from Event import event
 import Common
+from PIL.ImageOps import solarize
+import Display
 
-LISTEN_DELAY_INPUT = 0.002
+LISTEN_DELAY_INPUT = 0.002 # Pas en dessous de 0.002 sinon python plante
 
 ################################################################################
 
@@ -40,7 +42,7 @@ class Matrix_Point():
 ################################################################################
 class Input():
     instances = dict()
-    def __init__(self, name, get_level_object, normal_state=0, external_event=None, **args_event):
+    def __init__(self, name, object_sim, get_level_object, normal_state=0, external_event=None, **args_event):
         if name not in Input.instances.keys():
             self.name = name
         else:
@@ -51,9 +53,10 @@ class Input():
         Input.instances[name] = self 
         self.external_event = external_event 
         self.args_event = args_event  
-        self.activated = False  
+        self.activated = False 
+        self.sim = Input_Sim(object_sim) 
         self.get_level_object = get_level_object 
-    
+
     def set_external_event(self, external_event, **args):
         self.external_event = external_event
         self.args_event = args
@@ -64,7 +67,68 @@ class Input():
     def event(self):
         if self.external_event != None:
             self.external_event(**self.args_event)
+    
+    def end(self):
+        pass
+    
+    def simulate(input_name):
+        input = Input.instances[input_name]
+        input.sim.start()
+        while input.sim.end == False:
+            time.sleep(LISTEN_DELAY_INPUT)
+        return input
+    
+################################################################################
+class Input_Sim():
+    def __init__(self, object_level):
+        self.object_level = object_level
+        self.end = False
+        
+    def end_loop(self, earg):
+        self.object_level.set_level(0)
+        manager.even_end_loop -= self.end_loop
+        self.end = True
+    
+    def begin_loop(self, earg):
+        self.object_level.set_level(1)
+        manager.even_end_loop += self.end_loop
+        manager.even_begin_loop -= self.begin_loop
+            
+    def start(self):
+        self.end = False
+        manager.even_begin_loop += self.begin_loop    
+        
 
+################################################################################        
+class Input_Pin(Input):
+    instances = dict()
+    def __init__(self, pin, **args):
+        """ Construit un objet Input
+        Keyword arguments:
+        *** -- ***
+        """  
+        super().__init__(get_level_object=pin, object_sim=pin, **args)     
+        Input_Pin.instances[self.name] = self
+
+################################################################################
+class Input_Matrix_Sim():
+    def __init__(self, x_pin, y_pin):
+        self.level = 0
+        self.x_pin = x_pin
+        self.y_pin = y_pin
+        self.y_pin.pin_sim.event_set_value += self.event_set_value_pin
+        
+    def set_level(self, value):
+        self.level = value
+    
+    def event_set_value_pin(self, value):
+        if self.level == 1:
+            pin = self.x_pin
+            if value == 1:
+                pin.set_level(1)
+            else:
+                pin.set_level(0)
+                
 ################################################################################        
 class Input_Matrix(Input):
     instances = dict()
@@ -73,9 +137,24 @@ class Input_Matrix(Input):
         Keyword arguments:
         *** -- ***
         """  
-        super().__init__(get_level_object=Matrix_Point(x, y, self), **args)     
+        m_point = Matrix_Point(x, y, self)
+        super().__init__(get_level_object=m_point, object_sim=Input_Matrix_Sim(m_point.x_pin, m_point.y_pin), **args)     
         Input_Matrix.instances[self.name] = self
-
+    
+    def test(wait_time):
+        for input in Input_Matrix.instances.values():
+            input.activated = True
+        
+        time.sleep(0.5)
+        
+        for input in Input_Matrix.instances.values():
+            if input.get_level() == 0:
+                status = 99
+            else:
+                status = input.x + input.y*10
+            Display.Display.instances["Status"].set_status(status)
+            time.sleep(wait_time)
+            
 ################################################################################        
 class Input_Playfield(Input_Matrix):
     instances = dict()
@@ -111,18 +190,21 @@ class Input_Playfield(Input_Matrix):
             Input_Playfield.args_unique_event = None
     
 ################################################################################
-class Slam(Input):
-    def __init__(self, pin, **args):
+class Slam(Input_Pin):
+    def __init__(self, **args):
         """ Construit un objet Credit
         Keyword arguments:
         *** -- ***
         """
-        self.pin = pin
-        super().__init__(name=self.__class__.__name__, get_level_object=pin, **args)
-    
+        super().__init__(name=self.__class__.__name__, **args)
+        
     def event(self):
-        Common.infos_game['status'] = Common.General_Status.SLAM
-        super().event()
+        if Common.TEST_MODE == True:    
+            Input.instances['Test'].end_test()
+        else:
+            Common.attract_mode()
+            Data_Save.add_slam()
+            super().event()
             
 ################################################################################
 class Tilt(Input_Matrix):
@@ -132,19 +214,20 @@ class Tilt(Input_Matrix):
         *** -- ***
         """
         super().__init__(name=self.__class__.__name__, **args)
-    
+        
     def event(self):
-        if Common.infos_game['status'] == Common.General_Status.START:
+        if Common.TEST_MODE == True:    
+            Input.instances['Test'].end_test()
+        elif Common.infos_game['status'] == Common.General_Status.START:
             Data_Save.add_tilt()
-            Common.infos_game['status'] = Common.General_Status.TILT
+            tilt_level(1)
+            for lamp in Output.Lamp.instances.values():
+                lamp.set_level(0)
             
-            for input in Input_Playfield.instances.values():
-                input.tilt()
-            
-            Common.tilt_level(1)
-                
-        super().event()
-          
+            for input_p in Input_Playfield.instances.values():
+                input_p.activated = False                     
+            super().event()
+
 ################################################################################
 class Start(Input_Matrix):
     def __init__(self, **args):
@@ -152,19 +235,18 @@ class Start(Input_Matrix):
         Keyword arguments:
         *** -- ***
         """
-        self.event_Start_Test = event.Event()
         super().__init__(name=self.__class__.__name__, **args)
     
     def event(self):
-        if Common.infos_game['status'] == Common.General_Status.TEST:
-            self.event_Start_Test.fire()
+        if Common.TEST_MODE == True:
+            Input.instances['Test'].start_pressed()
         else:
-            if Common.get_credits() > 0:
+            if Display.Display.instances['Status'].get_credit() > 0:
                 if Common.first_ball():
                     self.add_player()
                 else:
                     self.start_new_game()             
-        super().event()
+            super().event()
         
     def add_player(self):
         if Common.add_player() == True:
@@ -183,18 +265,73 @@ class Test(Input_Matrix):
         Keyword arguments:
         *** -- ***
         """
-        Input.instances['Start'].event_Start_Test += self.start_pressed
-        super().__init__(name=self.__class__.__name__, **args) 
+        super().__init__(name=self.__class__.__name__, **args)
+        self.current_step = 0
+        self.wait_time_before_end = 60
+        self.timer = Common.Timer()
+        self.timer.event_end += self.end_test
+        self.start_pressed_reset = False
+        self.wait_time_between_test = 0.5
         
     def event(self):
-        if Common.infos_game['status'] == Common.General_Status.ATTRACT_MODE:
-            Common.infos_game['status'] = Common.General_Status.TEST
-        
-        super().event()
-                
-    def start_pressed(self):
-        pass        
+        # Premier appuie
+        if Common.TEST_MODE == False:
+            self.current_step = 0
+            Common.attract_mode()
+            Common.TEST_MODE = True
+            Common.init_displays()
+        elif self.start_pressed_reset == True:
+            Data_Save.reset_by_pos(self.current_step)
+        else:
+            vale = Display.Player.instances[1].get_value()
+            if vale  != "" and self.current_step < 16:
+                Data_Save.set_by_pos(self.current_step, Display.Player.instances[1].get_value())
+            self.current_step += 1
+            self.start_step()
     
+    def end(self):
+        self.timer.stop()
+        super().end()
+        
+    def start_step(self):
+        self.timer.start(self.wait_time_before_end)
+        Display.Display.instances["Status"].set_credit(self.current_step)
+        Display.Player.instances[3].set_int_value(self.current_step)
+        Display.Player.instances[4].set_int_value(self.current_step)
+        
+        if self.current_step < 16:
+           val = Data_Save.get_by_pos(self.current_step-1)        
+           Display.Player.instances[1].set_int_value(val)
+        else:
+            if self.current_step == 16:
+                Output.Lamp.test(self.wait_time_between_test)
+            elif self.current_step == 17:
+                Output.Lamp.test(self.wait_time_between_test)
+                #Output.Sound.test()
+            elif self.current_step == 18:
+                Input_Matrix.test(wait_time_between_test) 
+            elif self.current_step == 19:
+                Display.Display.instances["Status"].value("")
+                Display.Display.test(wait_time_between_test) 
+    
+    def end_test(self, earg=None):
+        Common.TEST_MODE = False
+        Common.attract_mode()
+        
+    def start_pressed(self):
+        if self.current_step == 0:
+           self.current_step = 16        
+           self.start_step()
+        else:
+            if self.current_step < 16:
+                Display.Player.instances[1].set_all_zero()
+                if self.current_step < 11 or self.current_step > 14:
+                    self.start_pressed = True
+                else:
+                    Display.Player.instances[3].set_value(100000, increment=True)
+            else:
+                self.start_step()
+                
     def get_list_tests(self):
         dict_tests = dict()
         dict_tests["Matrix"] = [input.name for input in Input_Matrix.instances.values()]
@@ -208,6 +345,7 @@ class Test(Input_Matrix):
     
     def test_one_io(self, name_test, name_io):
         pass
+        
     
 ################################################################################
 class Credit(Input_Matrix):
@@ -249,7 +387,7 @@ class Point_Light(Input_Playfield):
         """
         super().__init__(**args)
         self.points = points
-        self.lamp = Output.Lamp(lamp_control, lamp_latch, self.name)      
+        self.lamp = Output.Lamp_Playfield(lamp_control=lamp_control, lamp_latch=lamp_latch, name=self.name)      
     
     def tilt(self):
         self.lamp.reset()
@@ -316,7 +454,7 @@ class Target(Point_Light):
             else:
                 self.lamp.blink(1)
         self.parent.check_action()
-
+        
 ################################################################################
 class Target_Drop(Target):
     instances = dict()
@@ -372,7 +510,7 @@ class Target_Bank_Drop(Target_Bank):
     instances = dict()
     def __init__(self, **args):     
         super().__init__(**args)
-        self.solenoid = Output.Solenoid.instances[self.name]
+        self.solenoid = Output.Solenoid.get_by_name(self.name)
         Target_Bank_Drop.instances[self.name] = self
     
     def check_action(self):
@@ -406,11 +544,11 @@ class Hole(Input_Playfield):
         *** -- ***
         """
         super().__init__(**args)
-        self.solenoid = Output.Solenoid.instances[self.name]
+        self.solenoid = Output.Solenoid.get_by_name(self.name)
     
     def eject_ball(self):
         self.solenoid.pulse()
-        
+
 ################################################################################
 class OutHole(Hole):
     def __init__(self, **args):
@@ -419,16 +557,10 @@ class OutHole(Hole):
         *** -- ***
         """
         super().__init__(**args)
+    
+    def event(self):
+        self.eject_ball()
         
-################################################################################
-class Trough(Input_Playfield):
-    def __init__(self, **args):
-        """ Construit un objet Trough
-        Keyword arguments:
-        *** -- ***
-        """
-        super().__init__(**args)
-            
 ################################################################################
 class Manager():
     def __init__(self):
@@ -437,10 +569,9 @@ class Manager():
         *** -- ***
         """
         self._th = None
-    
-    def get_total_time_wait(self):
-        return LISTEN_DELAY_INPUT*len(Input.instances)
-    
+        self.even_begin_loop = event.Event()
+        self.even_end_loop = event.Event()
+        
     def start(self):
         self._th = threading.Thread(target=self._th_listen_input)
         self._end_th = False
@@ -452,7 +583,7 @@ class Manager():
         
     def _th_listen_input(self):
         while self._end_th == False:
-            #timer_begin = time.time()
+            self.even_begin_loop.fire()
             for input in Input.instances.values():
                 if input.activated == True:    
                     new_state = input.get_level_object.get_level()
@@ -461,6 +592,7 @@ class Manager():
                         if new_state != input.normal_state :
                             input.event()
                 else:
-                    time.sleep(LISTEN_DELAY_INPUT)  
-            #print(time.time() - timer_begin)       
-manager = Manager()       
+                    time.sleep(LISTEN_DELAY_INPUT)    
+            self.even_end_loop.fire()
+                  
+manager = Manager()  

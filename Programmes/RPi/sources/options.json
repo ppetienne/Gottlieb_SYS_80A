@@ -1,22 +1,18 @@
 {
-	"pinball_name":"Devil_Dare",
-    "credits": [
+    "coin_values": [
         1,
-        2,
+        1,
         1
     ],
+    "credits": 0,
     "game_mode": "Extra Ball",
     "hardware": false,
     "high_play_award": 2,
-    "high_scores_replay": [
-        500000,
-        1000000,
-        1500000
-    ],
     "match": true,
     "maximum_credits": 99,
     "nb_balls": 3,
     "novelty": true,
+    "pinball_name": "Devil_Dare",
     "playfield_special": true,
     "replay_limit": 0
 }
