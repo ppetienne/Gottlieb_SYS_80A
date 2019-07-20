@@ -9,7 +9,7 @@ import pickle
 import time
 import threading
 
-path = os.path.dirname(os.path.realpath(__file__)) + '\\pickle.dat'
+path = os.path.dirname(os.path.realpath(__file__)) + '/data_save.dat'
 
 protect = threading.Semaphore()
 
@@ -17,7 +17,7 @@ def get(name):
 	return [data for data in get_all() if data["name"] == name][0]["value"]
 
 def get_name_by_pos(pos):
-	return [data for data in get_all() if data["name"] == name][0]["name"]
+	return get_all()[pos]["name"]
 
 def get_by_pos(pos):
 	return get_all()[pos]["value"]

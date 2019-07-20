@@ -14,5 +14,6 @@
     "novelty": true,
     "pinball_name": "Devil_Dare",
     "playfield_special": true,
-    "replay_limit": 0
+    "replay_limit": 0,
+    "use_GUI": true
 }

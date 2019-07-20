@@ -8,12 +8,22 @@ from Event import event
 from Contacts import conn
 import time
 import threading
-import simpleaudio as sa
 import pyglet
 import Display
 import operator
 import Common
+import Interface_Test
 
+################################################################################
+# General functions
+
+def get_dict_name(instance_dict):
+		dict_name = dict()
+		for object in instance_dict.values():
+			dict_name[object.num] = object.name
+		return dict_name
+	
+################################################################################	
 class Mother_Board():
 	instances = list()
 	def __init__(self, pin, num):
@@ -24,12 +34,14 @@ class Mother_Board():
 		self.pin = pin
 		self.num = num
 		Mother_Board.instances.append(self)
+		self.event_GUI = event.Event()
 		
 	def set_level(self, value):
 		self.pin.set_level(value)
+		self.event_GUI.fire((self.num, value))
 		
 ################################################################################
-class Test_Solenoid(Common.Test):
+class Test_Solenoid(Interface_Test.Test):
 	def __init__(self):
 		super().__init__()
 	
@@ -45,14 +57,15 @@ class Test_Solenoid(Common.Test):
 class Solenoid(Mother_Board):
 	instances = dict()
 	test = Test_Solenoid()
-	def __init__(self, **args):
+	def __init__(self, name, **args):
 		""" Construit un objet Display
 		Keyword arguments:
 		*** -- ***
 		"""
+		args['pin'] = Solenoid.get_pin(args['num'])
+		self.name = name
 		super().__init__(**args)
-		Solenoid.instances[self.num] = self
-		self.name = ""
+		Solenoid.instances[self.name] = self
 			
 	def pulse(self, wait_time=0.5):
 		self.set_level(1)
@@ -60,19 +73,33 @@ class Solenoid(Mother_Board):
 		self.set_level(0)
 		time.sleep(wait_time)
 	
-	def get_by_name(name):
-		return [sol for sol in Solenoid.instances.values() if sol.name == name][0]
-			
-Solenoid(pin=conn.J4['S'], num=1)
-Solenoid(pin=conn.J4['X'], num=2)
-Solenoid(pin=conn.J4[24], num=3)
-Solenoid(pin=conn.J4[23], num=4)
-Solenoid(pin=conn.J4['R'], num=5)
-Solenoid(pin=conn.J4['U'], num=6)
-Solenoid(pin=conn.J4[22], num=7)
-Solenoid(pin=conn.J4[21], num=8)
-Solenoid(pin=conn.J4['T'], num=9)  
+	def get_pin(num):
+		if num == 1:
+			pin=conn.J4['S']
+		elif num == 2:
+			pin=conn.J4['X']
+		elif num == 3:
+			pin=conn.J4[24]
+		elif num == 4:
+			pin=conn.J4[23]
+		elif num == 5:
+			pin=conn.J4['R']
+		elif num == 6:
+			pin=conn.J4['U']
+		elif num == 7:
+			pin=conn.J4[22]	
+		elif num == 8:
+			pin=conn.J4[21]
+		elif num == 9:
+			pin=conn.J4['T']
+		return pin
 
+	def get_by_name(name):
+		return Solenoid.instances[name]
+	
+	def get_by_num(num):
+		return [sol for sol in Solenoid.instances.values() if sol.num == num][0]
+       
 ################################################################################
 # class Sound(Mother_Board):
 # 	instances = dict()
@@ -131,29 +158,46 @@ Lamp_Control(pin=conn.J4[5], num=4)
 ################################################################################
 class Driver_Board():
 	instances = dict()
-	def __init__(self, lamp_control, lamp_latch, name, num=None):
+	def __init__(self, num, name):
 		""" Construit un objet Display
 		Keyword arguments:
 		*** -- ***
 		"""
-		self.lamp_control = lamp_control
-		self.lamp_latch = lamp_latch
+		(self.lamp_control,self.lamp_latch) = Driver_Board.get_lamp_latch_control(num)
 		self.name = name
 		Driver_Board.instances[name] = self
 		self.value = 0
 		self.num = num
-            
+		self.event_GUI = event.Event()
+    
+	def get_lamp_latch_control(num):
+		lamp_latch = Lamp_Latch.instances[int(num/4) + 1]
+		if num == 10 :
+			lamp_control = Lamp_Control.instances[4]
+		elif num == 11 :
+			lamp_control = Lamp_Control.instances[3]
+		else:	
+			lamp_control = Lamp_Control.instances[int(num%4) + 1]
+		return lamp_latch, lamp_control
+	
 	def set_level(self, value):
 		self.lamp_latch.pin.set_level(1)
 		self.lamp_control.pin.set_level(value)
 		self.lamp_latch.pin.set_level(0)
 		self.value = value
+		self.event_GUI.fire((self.num, value))
 	
 	def get_level(self):
 		return self.value
-			
+	
+	def get_by_name(name):
+		return Lamp.instances[name]
+	
+	def get_by_num(num):
+		return [driver for driver in Driver_Board.instances.values() if driver.num == num][0]
+		
 ################################################################################
-class Test_Relay(Common.Test):
+class Test_Relay(Interface_Test.Test):
 	def __init__(self, **args):
 		super().__init__(**args)
 	
@@ -163,24 +207,30 @@ class Test_Relay(Common.Test):
 			if self._end_th == True:
 				break
 			Display.Display.instances["Status"].set_status(relay.num)
-			sol.pulse()
-			time.sleep(0.1)
-			sol.pulse()
+			relay.pulse(wait_time/2)
+			time.sleep(0.2)
+			relay.pulse(wait_time/2)
 			time.sleep(wait_time)
 
 class Relay(Driver_Board):
 	instances = dict()
 	test = Test_Relay()
-	def __init(self):
-		super().__init__()
+	def __init__(self, **args):
+		super().__init__(**args)
 		Relay.instances[self.name] = self
 	
-Relay(num=1, lamp_control=Lamp_Control.instances[1], lamp_latch=Lamp_Latch.instances[1], name="Game Over Relay")
-Relay(num=2, lamp_control=Lamp_Control.instances[2], lamp_latch=Lamp_Latch.instances[1], name="Tilt")
-Relay(num=3, lamp_control=Lamp_Control.instances[3], lamp_latch=Lamp_Latch.instances[1], name="Coin Lockout Coil")
+	def pulse(self, wait_time=0.5):
+		self.set_level(1)
+		time.sleep(wait_time)
+		self.set_level(0)
+		time.sleep(wait_time)
+		
+Relay(num=0, name="Game Over Relay")
+Relay(num=1, name="Tilt")
+Relay(num=2, name="Coin Lockout Coil")
 
 ################################################################################
-class Test_Lamp(Common.Test):
+class Test_Lamp(Interface_Test.Test):
 	def __init__(self):
 		super().__init__()
 	
@@ -196,28 +246,9 @@ class Lamp(Driver_Board):
 	test = Test_Lamp()
 	def __init__(self, **args):
 		super().__init__(**args)
-		self.num = Lamp.get_num(self.lamp_control.num, self.lamp_latch.num)
 		self._th_blink = None 
 		self._end_th_blink = False
 		Lamp.instances[self.name] = self
-			
-	def get_num(lamp_control, lamp_latch):
-		if lamp_control == 4 and lamp_latch == 1:
-			num = 3
-		elif lamp_control == 1 and lamp_latch == 3:
-			num = 8
-		elif lamp_control == 3 and lamp_latch == 3:
-			num = 11
-		elif lamp_control == 4 and lamp_latch == 3:
-			num = 10
-		elif lamp_latch == 2:
-			num = 3 + lamp_control
-		elif lamp_latch > 3:
-			num = 11 + 4*(lamp_latch-4) + lamp_control
-		else:
-			raise Exception("Ce n'est pas une lampe qui est instanciee")
-		
-		return num
 	
 	def get_level(self, ignore_blink=False):
 		if self._th_blink != None and self._th_blink.is_alive() and ignore_blink == False:
@@ -261,9 +292,9 @@ class Lamp(Driver_Board):
 				cpt += 1
 				time.sleep(time_refresh)
 		self.set_level(0)
-			
-Lamp(lamp_control=Lamp_Control.instances[4], lamp_latch=Lamp_Latch.instances[3], name="Game Over Light")
-Lamp(lamp_control=Lamp_Control.instances[4], lamp_latch=Lamp_Latch.instances[1], name="Shoot Again")
+       
+Lamp(num=11, name="Game Over Light")
+Lamp(num=3, name="Shoot Again")
 
 ################################################################################
 class Lamp_Playfield(Lamp):
@@ -294,7 +325,7 @@ class Sound_Manager():
 		
 	def stop(self):
 		self._end_th = True
-		self._th.join()   
+		self._th.join()
 		   
 	def set_background_sound(self, background_file):
 		self.background_file = background_file

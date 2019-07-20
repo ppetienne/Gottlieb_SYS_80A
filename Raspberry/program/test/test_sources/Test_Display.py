@@ -18,7 +18,7 @@ class Test(unittest.TestCase):
         Display.manager.stop()
         
     def test_Display(self):
-        display = Display.Display.instances["Test"]
+        display = Display.Display.get_by_name("Test")
         display.set_int_value(1, increment=True)
         self.assertEqual(display.get_int_value(), 1)
         display.set_int_value(1, increment=True)
@@ -27,11 +27,12 @@ class Test(unittest.TestCase):
         self.assertEqual(display.get_int_value(), 1)
         display.set_all_zero()
         self.assertEqual(display.get_value(), "00")
-        Display.Display.test(0.001)
+        Display.Display.test.start(0.001)
         
     def test_Player(self):
-        display = Display.Display.instances[1]
+        display = Display.Display.get_by_name("p1")
         display.set_int_value(1)
+        self.assertEqual(display.get_int_value(), 1)
         display.blink(1)
         self.assertEqual(display.is_blinking(), True)
         display.blink(0)
@@ -47,7 +48,7 @@ class Test(unittest.TestCase):
         pass
     
     def test_Status(self):
-        display = Display.Display.instances["Status"]
+        display = Display.Display.get_by_name("Status")
         display.set_credit(10)
         self.assertEqual(display.get_value(), "10  ")
         display.set_credit(5)

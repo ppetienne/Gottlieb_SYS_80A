@@ -9,12 +9,30 @@ import threading
 import time
 from Event import event
 import Options
+import Interface_Test
 
-REFRESH_DELAY_DISPLAY = 0.005
+REFRESH_DELAY_DISPLAY = 0.1 #0.005 
 
+class Test_Display(Interface_Test.Test):
+	def __init__(self):
+		super().__init__()
+	
+	def _th_test(self, wait_time):
+		list_display = [Player.instances[display] for display in sorted(Player.instances)]
+		list_display.extend([display for display in Display.instances.values() if type(display) != Player ] )
+
+		for display in list_display:
+			str_val = ""
+			for i in range(display.nb_digits):
+				for i in range(10):
+					display.set_value(str(i) + str_val)
+					time.sleep(wait_time)
+				str_val += " "
+			
 class Display():
 	instances = dict()
 	event_refresh = event.Event()
+	test = Test_Display()
 	
 	def __init__(self, nb_digits, name, segment, list_digits, default_val=""):
 		""" Construit un objet Display
@@ -27,19 +45,12 @@ class Display():
 		self.list_digits = list_digits
 		self._value = default_val
 		self.default_val = default_val
-		Display.instances[name] = self
-	
-	def test(wait_time):
-		for display in Display.instances.values():
-			str_val = ""
-			for i in range(display.nb_digits):
-				for i in range(10):
-					display.set_value(str(i) + str_val)
-					time.sleep(wait_time)
-				str_val += " "
+		Display.instances[name] = self	
+		self.event_GUI = event.Event()
 					
 	def set_value(self, value):
 		self._value = value
+		self.event_GUI.fire((self.name, self.get_value()))
 	
 	def set_int_value(self, value, increment=False):
 		if increment == True and self.get_value().isdigit() == True:
@@ -75,6 +86,9 @@ class Display():
 	
 	def init_val(self):
 		self.set_value(self.default_val)
+		
+	def get_by_name(name):
+		return Display.instances[name]
 		
 ################################################################################		
 class Segments():
@@ -136,21 +150,22 @@ digits = Digits()
 		
 class Player(Display):
 	instances = dict()
-	def __init__(self, position):
+	def __init__(self, num):
 		""" Construit un objet Display
 		Keyword arguments:
 		*** -- ***
 		"""
-		if position == 1 or position == 2:
+		if num == 1 or num == 2:
 			segment_number = 0
 		else:
 			segment_number = 1
-		if position == 1 or position == 3:
+		if num == 1 or num == 3:
 			list_digits = 0
 		else:
 			list_digits = 1
-		super().__init__(7, position, segment_number, list_digits)
-		self.__class__.instances[self.name] = self
+		super().__init__(7, "p" + str(num), segment_number, list_digits)
+		Player.instances[self.name] = self
+		self.num = num
 		self._th_blink = None 
 		self._end_th_blink = False
 	
@@ -182,7 +197,10 @@ class Player(Display):
 			self.set_value("")
 			time.sleep(0.2)
 		self.set_value(init_value)
-			
+	
+	def get_by_num(num):
+		return [player for player in Player.instances.values() if player.num == num][0]
+		
 for i in range(1, 5):
 	Player(i)
 
@@ -274,9 +292,3 @@ class Manager():
 				display.refresh()
 
 manager = Manager()
-
-
-if __name__ == "__main__":
-	manager.start()
-	Display.test(0.5)		
-	manager.stop()

@@ -47,30 +47,23 @@ class I2C_Slave():
         read_value.release()
         
 ################################################################################
-ADDRESS = 0x38
+ADDRESS = 0x20
 
 class PCF8575(I2C_Slave):
-    def __init__(self, master, idendifier=0x00):
-        """ Construit un objet PCA9554
+    def __init__(self, master, identifier=0x00):
+        """ Construit un objet PCF8575
         Keyword arguments:
         master -- master I2C utilise pour communiquer avec le composant
         id -- adresse propre au composant
         """
-        super().__init__(master, ADDRESS, idendifier)
-            
-    def set_port_mode(self, mode):
-        """ Configure le mode du port
-        Keyword arguments:
-        mode -- mode choisis (0=output 1=input)
-        """
-        self.write(0x03, mode)
-    
+        super().__init__(master, ADDRESS, identifier)
+
     def set_port_val(self, val):
         """ Configure la valeur du port
         Keyword arguments:
         val -- valeur a configurer
         """
-        self.write(0x01, val)
+        self.write(val&0xFF, (val & 0xFF00) >> 8)
         
     def set_pin_val(self, pin, val):
         """ Configure une seule pin du port
@@ -86,7 +79,8 @@ class PCF8575(I2C_Slave):
     def get_port_val(self):
         """ Recupere la valeur du port
         """
-        return self.read(0x00)
+        temp_block = self.read(0x00, nb_bytes=2)
+        return temp_block[0] + (temp_block[1] << 8) 
 
     def get_pin_val(self, pin):
         """ Recupere la valeur d'une seule pin du port

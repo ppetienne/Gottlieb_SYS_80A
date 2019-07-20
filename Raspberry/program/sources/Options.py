@@ -8,8 +8,8 @@ import os
 import json 
 import threading
 
-filename = "infos.json"
-path = os.path.dirname(os.path.realpath(__file__)) + '\\' + filename
+filename = "options.json"
+path = os.path.dirname(os.path.realpath(__file__)) + '/' + filename
 
 protect = threading.Semaphore()
 
@@ -25,7 +25,7 @@ def set_all(infos):
     _check_all(infos)
     _save_json(infos)
 
-def get(name):  
+def get(name):    
     return get_all()[name]
 
 def set(name, value):
@@ -49,7 +49,7 @@ def _check(name, value):
     def raise_exception():
         raise AttributeError(str_exception + "est incorrect (valeur: " + value + ")")
     
-    if (name not in ['coin_values', 'pinball_name', 'nb_balls', 'hardware', 'maximum_credits', 'playfield_special', 'high_play_award', 'match', 'replay_limit', 'novelty', 'game_mode'] 
+    if (name not in ['coin_values', 'pinball_name', 'nb_balls', 'hardware', 'maximum_credits', 'playfield_special', 'high_play_award', 'match', 'replay_limit', 'novelty', 'game_mode', 'use_GUI'] 
         and "credit" not in name):
         raise AttributeError(str_exception + "n'existe pas")
     
@@ -73,7 +73,8 @@ def _check(name, value):
         raise_exception()
     if name == "coin_values" and len([credit for credit in value if credit < 0]) > 0:
         raise_exception()
-    
+    if name == "use_GUI" and (value != True and value != False):
+        raise_exception()
     if name == "credits" and (value < 0):
         raise_exception()
 
@@ -91,6 +92,7 @@ def reset():
     infos["replay_limit"] = 0
     infos["novelty"] = True
     infos["game_mode"] = "Extra Ball"
+    infos["use_GUI"] = False
     
     
     _check_all(infos)

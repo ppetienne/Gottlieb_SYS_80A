@@ -13,8 +13,9 @@ import Data_Save
 from Event import event
 import Common
 import Display
+import Interface_Test
 
-LISTEN_DELAY_INPUT = 0.002 # Pas en dessous de 0.002 sinon python plante
+LISTEN_DELAY_INPUT = 0.001 # Pas en dessous de 0.002 sinon python plante
 
 ################################################################################
 
@@ -42,7 +43,7 @@ class Matrix_Point():
 class General_Input():
     instances = dict()
     def __init__(self, name, object_sim, get_level_object, normal_state=0, external_event=None, **args_event):
-        if name not in Input.instances.keys():
+        if name not in General_Input.instances.keys():
             self.name = name
         else:
             raise Exception("L'input " + name + " est deja existant")
@@ -50,7 +51,9 @@ class General_Input():
         self.normal_state = normal_state
         self.state = normal_state
         General_Input.instances[name] = self 
-        self.external_event = external_event 
+        self.external_event = external_event
+        self.event_GUI = event.Event()
+        self.event_end_GUI = event.Event()
         self.args_event = args_event  
         self.activated = False 
         self.sim = Input_Sim(object_sim) 
@@ -64,24 +67,35 @@ class General_Input():
         return self.state
     
     def event(self):
+        self.event_GUI.fire((self.name, self.get_level()))
         if self.external_event != None:
             self.external_event(**self.args_event)
-    
+        
+    def event_end(self):
+        self.event_end_GUI.fire((self.name, self.get_level()))
+        
     def end(self):
         pass
     
-    def simulate(input_name):
-        input = General_Input.instances[input_name]
-        input.sim.start()
-        while input.sim.end == False:
-            time.sleep(LISTEN_DELAY_INPUT)
-        return input
+    def simulate(self, value=None):
+        if value == None:
+            self.sim.start()
+            self.sim.stop()
+        else:
+            if value == 1 :
+                self.sim.start()
+            else:
+                self.sim.stop()
+    
+    def get_by_name(name):
+        return General_Input.instances[name]
     
 ################################################################################
 class Input_Sim():
     def __init__(self, object_level):
         self.object_level = object_level
-        self.end = False
+        self.end = True
+        self.first_loop_done = False
         
     def end_loop(self, earg):
         self.object_level.set_level(0)
@@ -90,12 +104,21 @@ class Input_Sim():
     
     def begin_loop(self, earg):
         self.object_level.set_level(1)
-        manager.even_end_loop += self.end_loop
-        manager.even_begin_loop -= self.begin_loop
+        self.first_loop_done = True
             
     def start(self):
-        self.end = False
-        manager.even_begin_loop += self.begin_loop    
+        if self.end == True:
+            self.end = False
+            self.first_loop_done = False
+            manager.even_begin_loop += self.begin_loop
+    
+    def stop(self):
+        if self.end == False:
+            while self.first_loop_done == False: pass
+            manager.even_begin_loop -= self.begin_loop
+            manager.even_end_loop += self.end_loop
+            while self.end == False:
+                time.sleep(LISTEN_DELAY_INPUT)
         
 
 ################################################################################        
@@ -128,19 +151,12 @@ class Matrix_Sim():
             else:
                 pin.set_level(0)
                 
-################################################################################        
-class Matrix(General_Input):
-    instances = dict()
-    def __init__(self, x, y, **args):
-        """ Construit un objet Input
-        Keyword arguments:
-        *** -- ***
-        """  
-        m_point = Matrix_Point(x, y, self)
-        super().__init__(get_level_object=m_point, object_sim=Matrix_Sim(m_point.x_pin, m_point.y_pin), **args)     
-        Matrix.instances[self.name] = self
+################################################################################  
+class Test_Matrix(Interface_Test.Test):
+    def __init__(self):
+        super().__init__()
     
-    def test(wait_time):
+    def _th_test(self, wait_time):
         for input in Matrix.instances.values():
             input.activated = True
         
@@ -153,7 +169,34 @@ class Matrix(General_Input):
                 status = input.x + input.y*10
             Display.Display.instances["Status"].set_status(status)
             time.sleep(wait_time)
-            
+                  
+class Matrix(General_Input):
+    instances = dict()
+    test = Test_Matrix()
+    def __init__(self, x, y, **args):
+        """ Construit un objet Input
+        Keyword arguments:
+        *** -- ***
+        """  
+        m_point = Matrix_Point(x, y, self)
+        super().__init__(get_level_object=m_point, object_sim=Matrix_Sim(m_point.x_pin, m_point.y_pin), **args)     
+        Matrix.instances[self.name] = self
+    
+    def get_dict_name():
+        dict_name = dict()
+        for matrix in Matrix.instances.values():
+            dict_name[str(matrix.get_level_object.y) + str(matrix.get_level_object.x)] = matrix.name
+        return dict_name
+    
+    def get_by_yx(y, x):
+        return [matrix for matrix in Matrix.instances.values() if matrix.get_level_object.x == x and matrix.get_level_object.y == y][0]
+    
+    def get_by_name(name):
+        return Matrix.instances[name]
+    
+    def event(self):
+        super().event()
+              
 ################################################################################        
 class Playfield(Matrix):
     instances = dict()
@@ -184,12 +227,12 @@ class Playfield(Matrix):
     def event(self):
         super().event()
         if Playfield.external_unique_event != None:
-            Playfield.external_unique_event(*Input.args_unique_event)
+            Playfield.external_unique_event(*General_Input.args_unique_event)
             Playfield.external_unique_event = None
             Playfield.args_unique_event = None
     
 ################################################################################
-class Slam(Input_Pin):
+class Slam(Simple_Pin):
     def __init__(self, **args):
         """ Construit un objet Credit
         Keyword arguments:
@@ -199,12 +242,12 @@ class Slam(Input_Pin):
         
     def event(self):
         if Common.TEST_MODE == True:    
-            Input.instances['Test'].end_test()
+            General_Input.instances['Test'].end_test()
         else:
             Common.attract_mode()
             Data_Save.add_slam()
             super().event()
-            
+         
 ################################################################################
 class Tilt(Matrix):
     def __init__(self, **args):
@@ -216,14 +259,14 @@ class Tilt(Matrix):
         
     def event(self):
         if Common.TEST_MODE == True:    
-            Input.instances['Test'].end_test()
+            General_Input.instances['Test'].end_test()
         elif Common.infos_game['status'] == Common.General_Status.START:
             Data_Save.add_tilt()
             tilt_level(1)
             for lamp in Output.Lamp.instances.values():
                 lamp.set_level(0)
             
-            for input_p in Input_Playfield.instances.values():
+            for input_p in Playfield.instances.values():
                 input_p.activated = False                     
             super().event()
 
@@ -238,7 +281,7 @@ class Start(Matrix):
     
     def event(self):
         if Common.TEST_MODE == True:
-            Input.instances['Test'].start_pressed()
+            General_Input.instances['Test'].start_pressed()
         else:
             if Display.Display.instances['Status'].get_credit() > 0:
                 if Common.first_ball():
@@ -256,7 +299,7 @@ class Start(Matrix):
         self.add_player()      
         super().event()
         Common.infos_game['status'] = Common.General_Status.START
-        
+     
 ################################################################################
 class Test(Matrix):
     def __init__(self, **args):
@@ -282,9 +325,9 @@ class Test(Matrix):
         elif self.start_pressed_reset == True:
             Data_Save.reset_by_pos(self.current_step)
         else:
-            vale = Display.Player.instances[1].get_value()
+            vale = Display.Player.get_by_num(1).get_value()
             if vale  != "" and self.current_step < 16:
-                Data_Save.set_by_pos(self.current_step, Display.Player.instances[1].get_value())
+                Data_Save.set_by_pos(self.current_step, Display.Display.get_by_name("p1").get_value())
             self.current_step += 1
             self.start_step()
     
@@ -294,13 +337,13 @@ class Test(Matrix):
         
     def start_step(self):
         self.timer.start(self.wait_time_before_end)
-        Display.Display.instances["Status"].set_credit(self.current_step)
-        Display.Player.instances[3].set_int_value(self.current_step)
-        Display.Player.instances[4].set_int_value(self.current_step)
+        Display.Display.get_by_name("Status").set_credit(self.current_step)
+        Display.Player.get_by_num(3).set_int_value(self.current_step)
+        Display.Player.get_by_num(4).set_int_value(self.current_step)
         
         if self.current_step < 16:
            val = Data_Save.get_by_pos(self.current_step-1)        
-           Display.Player.instances[1].set_int_value(val)
+           Display.Player.get_by_num(1).set_int_value(val)
         else:
             if self.current_step == 16:
                 Output.Lamp.test.start(self.wait_time_between_test)
@@ -327,11 +370,11 @@ class Test(Matrix):
            self.start_step()
         else:
             if self.current_step < 16:
-                Display.Player.instances[1].set_all_zero()
+                Display.Player.get_by_num(1).set_all_zero()
                 if self.current_step < 11 or self.current_step > 14:
                     self.start_pressed = True
                 else:
-                    Display.Player.instances[3].set_value(100000, increment=True)
+                    Display.Player.get_by_num(3).set_value(100000, increment=True)
             else:
                 self.start_step()
                 
@@ -349,7 +392,7 @@ class Test(Matrix):
     def test_one_io(self, name_test, name_io):
         pass
         
-    
+
 ################################################################################
 class Credit(Matrix):
     def __init__(self, value, name, **args):
@@ -365,7 +408,7 @@ class Credit(Matrix):
         super().event()
 
 ################################################################################
-class Point(Input_Playfield):
+class Point(Playfield):
     def __init__(self, points, **args):
         """ Construit un objet Points
         Keyword arguments:
@@ -382,15 +425,15 @@ class Point(Input_Playfield):
         super().event()
         
 ################################################################################
-class Point_Light(Input_Playfield):
-    def __init__(self, points, lamp_control, lamp_latch, **args):
+class Point_Light(Playfield):
+    def __init__(self, points, num_lamp, **args):
         """ Construit un objet Points
         Keyword arguments:
         *** -- ***
         """
         super().__init__(**args)
         self.points = points
-        self.lamp = Output.Lamp_Playfield(lamp_control=lamp_control, lamp_latch=lamp_latch, name=self.name)      
+        self.lamp = Output.Lamp_Playfield(num=num_lamp, name=self.name)      
     
     def tilt(self):
         self.lamp.reset()
@@ -424,7 +467,7 @@ class Point_Light_Blink(Point_Light):
             points = self.points[0]
             
         Common.add_points_current_player(points)
-        Input_Playfield.event(self)
+        Playfield.event(self)
         
 ################################################################################
 class Target(Point_Light):
@@ -437,7 +480,7 @@ class Target(Point_Light):
         self.nb_states = nb_states
         self.position_enfant = position_enfant
         self.parent.children.append(self)
-        name = str(self.position_enfant) + "_" + self.parent.name
+        name = str(self.position_enfant + 1) + " " + self.parent.name
         super().__init__(name=name, **args)
     
     def new_game(self):
@@ -540,7 +583,7 @@ class Spinner(Point_Light):
             self.lamp.set_level(0)
                       
 ################################################################################
-class Hole(Input_Playfield):
+class Hole(Playfield):
     def __init__(self, **args):
         """ Construit un objet Hole
         Keyword arguments:
@@ -587,13 +630,15 @@ class Manager():
     def _th_listen_input(self):
         while self._end_th == False:
             self.even_begin_loop.fire()
-            for input in Input.instances.values():
+            for input in General_Input.instances.values():
                 if input.activated == True:    
                     new_state = input.get_level_object.get_level()
                     if new_state != input.state :
                         input.state = new_state
                         if new_state != input.normal_state :
                             input.event()
+                        else:
+                            input.event_end()
                 else:
                     time.sleep(LISTEN_DELAY_INPUT)    
             self.even_end_loop.fire()

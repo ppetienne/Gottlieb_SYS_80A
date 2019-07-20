@@ -12,10 +12,13 @@ class Test(unittest.TestCase):
         datas = Data_Save.get_all()
 
         # Test get_set(self):
+        self.assertEqual(Data_Save.get("HGTD"), 0)
         Data_Save.set("HGTD", 10)
         self.assertEqual(Data_Save.get("HGTD"), 10)
         
         # Test add_scores/add_to_parameter
+        self.assertEqual(Data_Save.get("total play"), 0)
+        self.assertEqual(Data_Save.get("average time"), 0)
         Data_Save.add_scores([1000,500], 0.2)
         self.assertEqual(Data_Save.get("total play"), 2)
         self.assertEqual(Data_Save.get("average time"), 0.1)
@@ -27,7 +30,6 @@ class Test(unittest.TestCase):
         self.assertTrue(Data_Save.get_time_hgtd() >= 1 and Data_Save.get_time_hgtd() < 2)
         Data_Save.reset()
         
-        # Test 
     def test_Options(self):
         Options.reset()
         # Test get_all

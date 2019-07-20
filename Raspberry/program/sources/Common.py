@@ -4,6 +4,7 @@
 # Fonctions et parametres communs pouvant eventuellement etre utilises pour tous
 # type de flipper SYS80A
 ################################################################################
+import sys
 import os
 import json
 from enum import Enum
@@ -17,6 +18,9 @@ import Options
 import random
 import threading
 
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/GUI_Simulator')
+import Starter
+
 infos_game = dict()
 infos_game['nb_players'] = 0
 infos_game['current_ball'] = 0
@@ -29,11 +33,10 @@ TEST_MODE = False
 
 ################################################################################
 # Classes
-
 class General_Status(Enum):
     ATTRACT_MODE = 1
     START = 3
-    
+
 class Timer():
     def __init__(self):
         self.event_end = event.Event()
@@ -58,52 +61,25 @@ class Timer():
             time.sleep(0.1)
         if self._end_th == False:
             self.event_end.fire()
-            
-class Test():
-    def __init__(self):
-        self._th = None
-        self._end_th = False
-        
-    def start(self, *args):
-        self.stop()
-        self._th = threading.Thread(target=self._th_test, args=args)
-        self._end_th = False
-        self._th.start()
-    
-    def stop(self):
-        if self._th != None: 
-            self._end_th = True
-            self._th.join()
-            self._th = None
-    
-    def is_finished(self):
-        if self._th != None and self._th.is_alive() == True:
-            return False
-        else:
-            return True
-    
-    def join(self):
-        self._th.join()
-    
-    def _th_test(self, **args):
-        raise Exception("Methode non redefinie dans la classe fille")
     
 ################################################################################
 # Fonctions critiques
 
 def power_on():
+    if Options.get("use_GUI") == True:
+        Starter.start_GUI()
     start_managers()
     #Activation entrees generales
-    for input in [Input.Input.instances[key] for key in Input.Input.instances.keys() if (key not in Input.Input_Playfield.instances.keys())]:
+    for input in [Input.General_Input.instances[key] for key in Input.General_Input.instances.keys() if (key not in Input.Playfield.instances.keys())]:
         input.activated = True
         
-    Output.Output_Driver.instances["Coin Lockout Coil"].set_level(1)
+    Output.Relay.instances["Coin Lockout Coil"].set_level(1)
     attract_mode()
     
 def start_managers():
     Display.manager.start()
     Input.manager.start()
-    Output.sound_manager.start()
+    #Output.sound_manager.start()
     
 def attract_mode():
     infos_game['status'] = General_Status.ATTRACT_MODE
@@ -112,12 +88,11 @@ def attract_mode():
     for display in Display.Display.instances.values():
         display.attract_mode()
         
-    for input in Input.Input_Playfield.instances.values():
+    for input in Input.Playfield.instances.values():
         input.attract_mode()
     
-    flash_playfield_lamp(1, 0.5)
-    th = threading.Thread(target=_th_show_HGTD_attract_mode)
-    #th.start()
+    flash_playfield_lamp(1, 1)
+    #_th_show_HGTD_attract_mode.start()
 
 def game_over_mode():
     reset_target_drop()
@@ -131,7 +106,7 @@ def start_new_game():
     infos_game['nb_replay'] = 0
     infos_game['begin time'] = time.time()
     flash_playfield_lamp(0)
-    for input in Input.Input_Playfield.instances.values():
+    for input in Input.Playfield.instances.values():
         input.new_game()
     
     set_game_over_level(0)
@@ -148,18 +123,19 @@ def power_off():
         if display.is_blinking() == True:
             display.blink(0)
             
-    for input in Input.Input.instances.values():
+    for input in Input.General_Input.instances.values():
         input.end()
 
 def stop_managers():
     Display.manager.stop()
     Input.manager.stop()
-    Output.sound_manager.stop()
+    #Output.sound_manager.stop()
     
 ################################################################################
 # Fonctions generales
-       
-def _th_show_HGTD_attract_mode():
+
+#_th_show_HGTD_attract_mode = threading.Thread(target=_show_HGTD_attract_mode)  
+def _show_HGTD_attract_mode():
     cpt = 0
     show_hgdt = False
     time_show_hgtd = 2 # duree en s de l'affichage du hgtd
@@ -182,21 +158,21 @@ def _th_show_HGTD_attract_mode():
             cpt += 1
             
 def flash_playfield_lamp(value, *args):
-    for lamp in Output.Lamp_Playfield.instances.values():
+    for lamp in Output.Lamp.instances.values():
         lamp.blink(value, *args)
         
 def add_credits(value):
     if Display.Display.instances['Status'].get_credit() + value <= Options.get('maximum_credits'):
         Display.Display.instances['Status'].set_credit(value, increment=True)
-        Output.Output_Driver.instances["Coin Lockout Coil"].set_level(1)
+        Output.Relay.instances["Coin Lockout Coil"].set_level(1)
     else:
-        Display.Display.instances['Status'].set_credit(Options.get('maximum_credits'), increment=False)
-        Output.Output_Driver.instances["Coin Lockout Coil"].set_level(0)
+        Display.Display.get_by_name('Status').set_credit(Options.get('maximum_credits'), increment=False)
+        Output.Relay.get_by_name("Coin Lockout Coil").set_level(0)
 
 def add_player():
     if infos_game['nb_players'] < 4:
         infos_game['nb_players'] += 1
-        Display.Player.instances[infos_game['nb_players']].set_double_zero()
+        Display.Player.get_by_num(infos_game['nb_players']).set_double_zero()
         return True
     else:
         return False
@@ -214,13 +190,13 @@ def init_displays():
         display.init_val()
         
 def set_tilt_level(value):
-    Output.Output_Driver.instances["Tilt"].set_level(value)
+    Output.Relay.instances["Tilt"].set_level(value)
 
 def get_tilt_level():
-    return Output.Output_Driver.instances["Tilt"].get_level()
+    return Output.Relay.instances["Tilt"].get_level()
 
 def set_game_over_level(value):
-    Output.Output_Driver.instances["Game Over Relay"].set_level(value)
+    Output.Relay.instances["Game Over Relay"].set_level(value)
     Output.Lamp.instances["Game Over Light"].set_level(value)
 
 def get_game_over_level():
@@ -271,7 +247,7 @@ def add_points_current_player(points):
 
 def get_display_player():
     number = infos_game['current_player']
-    return Display.Player.instances[number]
+    return Display.Player.get_by_num(number)
 
 def set_next_ball():
     infos_game['current_ball'] += 1
@@ -291,7 +267,7 @@ def reset_target_drop():
 def get_all_scores():
     scores = list()
     for i in range(infos_game['nb_players']):
-        scores.append(Display.Player.instances[i+1].get_int_value())
+        scores.append(Display.Player.get_by_num(i+1).get_int_value())
     return scores
         
 def save_scores():

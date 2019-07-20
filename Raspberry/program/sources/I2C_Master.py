@@ -22,12 +22,12 @@ class I2C_RPi():
 		nb_bytes -- nombre de bytes dans le registre
 		"""		
 		if nb_bytes > 1 :
-			val = self.bus.read_word_data(address, register)
+			val = self.bus.read_i2c_block_data(address, register, nb_bytes)
 		else:
 			val = self.bus.read_byte_data(address, register)
 		
 		return val
-
+	
 	def write(self, address, register, value, nb_bytes):
 		""" Ecrit dans un registre d'un esclave
 		Keyword arguments:

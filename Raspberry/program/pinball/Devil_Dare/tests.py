@@ -4,20 +4,22 @@ import Input
 import Options
 import Output
 import time
-
+import Display
+import Common
+        
 def simulate_target_bank_complete(name, nb=1):
     for i in range(nb):
         for child in Input.Target_Bank.instances[name].children:
-            Input.Input.simulate(child.name)
-            
+            Input.General_Input.simulate(child.name)
+         
 class Test(unittest.TestCase):
     def setUp(self):
-        main.power_on()
-        Input.Input.simulate('Credit Left')
-        Input.Input.simulate('Start')
+        Common.power_on()
+        Input.General_Input.simulate('Credit Left')
+        Input.General_Input.simulate('Start')
         
     def tearDown(self):
-        main.power_off()
+        Common.power_off()
     
     def test_Special(self):
         Input.Target_Bank.instances["Left Top Target Bank"].children
@@ -26,7 +28,7 @@ class Test(unittest.TestCase):
         self.assertEqual(Output.Lamp.instances['Special'].get_level(), 1)
         
         bonus = main.get_bonus_current_player()
-        Input.Input.simulate("Right Outside Rollover")
+        Input.General_Input.simulate("Right Outside Rollover")
         self.assertEqual(main.get_bonus_current_player(), bonus + 5000)    
     
     def test_Extra_Ball(self):
@@ -35,7 +37,7 @@ class Test(unittest.TestCase):
         self.assertEqual(Output.Lamp.instances['Extra Ball'].get_level(), 1)
         
         self.assertEqual(Output.Lamp.instances['Shoot Again'].get_level(), 0)
-        Input.Input.simulate("Rollunder")
+        Input.General_Input.simulate("Rollunder")
         self.assertEqual(Output.Lamp.instances['Shoot Again'].get_level(), 1)
         
     def test_Multi_Ball(self):

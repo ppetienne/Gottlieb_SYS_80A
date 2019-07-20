@@ -13,7 +13,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(Output.Lamp_Control.instances), 4)
     
     def test_Driver_Board(self): 
-        output = Output.Driver_Board(name="Test", lamp_control=Output.Lamp_Control.instances[1], lamp_latch=Output.Lamp_Latch.instances[1])
+        output = Output.Driver_Board(name="Test", num=1)
         output.set_level(1)
         self.assertEqual(output.get_level(), 1)
         output.set_level(0)
@@ -24,7 +24,7 @@ class Test(unittest.TestCase):
         Output.Relay.test.join()
     
     def test_Lamp(self):
-        lamp = Output.Lamp(name="Test", lamp_control=Output.Lamp_Control.instances[4], lamp_latch=Output.Lamp_Latch.instances[1])
+        lamp = Output.Lamp(name="Test", num=4)
         lamp.set_level(1)
         self.assertEqual(lamp.get_level(), 1)
         lamp.set_level(0)
@@ -59,9 +59,7 @@ class Test(unittest.TestCase):
         Output.Lamp.test.join()
         
     def test_Solenoid(self):
-        sol = Output.Solenoid.instances[9] # arbitraire
-        sol.name = "test"
-        self.assertEqual(sol.name, "test")
+        sol = Output.Solenoid(num=1, name="test") # arbitraire
         sol.set_level(1)
         sol.set_level(0) # Pas possible de tester, juste verifier qu'aucune exception remonte
         sol.pulse()
@@ -71,8 +69,8 @@ class Test(unittest.TestCase):
     def test_Sound(self):
         #Sequence : background > short_sound > nouveau short_sound avant fin ancien > background)
         Output.sound_manager.start()
-        Output.sound_manager.set_background_sound(os.path.dirname(os.path.abspath(__file__)) + "\\files\\background.wav")
-        sound = Output.Short_Sound(os.path.dirname(os.path.abspath(__file__)) + "\\files\\son1.wav")
+        Output.sound_manager.set_background_sound(os.path.dirname(os.path.abspath(__file__)) + r"/files/background.wav")
+        sound = Output.Short_Sound(os.path.dirname(os.path.abspath(__file__)) + r"/files/son1.wav")
         Output.sound_manager.start_background()
         time.sleep(1)
         sound.play()

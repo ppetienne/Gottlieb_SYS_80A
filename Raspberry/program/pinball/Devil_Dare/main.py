@@ -22,29 +22,29 @@ NB_BALL_SAVE = 0
 
 ################################################################################
 # Output generales
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[2], lamp_latch=Output.Lamp_Latch.instances[4], name="Multi-Ball Bonus", playfield=False)
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[3], lamp_latch=Output.Lamp_Latch.instances[4], name="Multi-Mode Timer", playfield=False)
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[3], lamp_latch=Output.Lamp_Latch.instances[3], name="High Game to Date", playfield=False)
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[1], lamp_latch=Output.Lamp_Latch.instances[4], name="Ball Release", playfield=False)
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[3], lamp_latch=Output.Lamp_Latch.instances[10], name="2X")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[4], lamp_latch=Output.Lamp_Latch.instances[10], name="3X")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[4], lamp_latch=Output.Lamp_Latch.instances[11], name="Extra Ball")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[1], lamp_latch=Output.Lamp_Latch.instances[10], name="2 Left Bottom Target")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[2], lamp_latch=Output.Lamp_Latch.instances[10], name="2 Left Bottom Target")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[3], lamp_latch=Output.Lamp_Latch.instances[11], name="Rollunder")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[4], lamp_latch=Output.Lamp_Latch.instances[4], name="Special")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[2], lamp_latch=Output.Lamp_Latch.instances[9], name="Hole")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[3], lamp_latch=Output.Lamp_Latch.instances[9], name="Hole Capture")
-Output.Lamp(lamp_control=Output.Lamp_Control.instances[4], lamp_latch=Output.Lamp_Latch.instances[9], name="Top Kicker Capture")
+Output.Lamp(num=13, name="Multi-Ball Bonus")
+Output.Lamp(num=14, name="Multi-Mode Timer")
+Output.Lamp(num=10, name="High Game to Date")
+Output.Lamp(num=12, name="Ball Release")
+Output.Lamp_Playfield(num=38, name="2X")
+Output.Lamp_Playfield(num=39, name="3X")
+Output.Lamp_Playfield(num=43, name="Extra Ball")
+Output.Lamp_Playfield(num=36, name="Top Left Bottom Target")
+Output.Lamp_Playfield(num=37, name="Bottom Left Bottom Target")
+Output.Lamp_Playfield(num=42, name="Rollunder")
+Output.Lamp_Playfield(num=15, name="Right Outside Rollover")
+Output.Lamp_Playfield(num=33, name="Hole")
+Output.Lamp_Playfield(num=34, name="Hole Capture")
+Output.Lamp_Playfield(num=35, name="Top Kicker Capture")
 
-Output.Solenoid.instances[1].name = "Top Drop Target Bank"
-Output.Solenoid.instances[2].name = "Top Ball Kicker"
-Output.Solenoid.instances[3].name = "Hole"
-Output.Solenoid.instances[4].name = "Ball Save Relay"
-Output.Solenoid.instances[5].name = "Left Drop Target Bank"
-Output.Solenoid.instances[6].name = "Right Drop Target Bank"
-Output.Solenoid.instances[8].name = "Knocker"
-Output.Solenoid.instances[9].name = "Outhole"
+Output.Solenoid(num=1, name="Top Drop Target Bank")
+Output.Solenoid(num=2, name="Top Ball Kicker")
+Output.Solenoid(num=3, name="Hole")
+Output.Solenoid(num=4, name="Ball Save Relay")
+Output.Solenoid(num=5, name="Left Drop Target Bank")
+Output.Solenoid(num=6, name="Right Drop Target Bank")
+Output.Solenoid(num=8, name="Knocker")
+Output.Solenoid(num=9, name="Outhole")
 
 ################################################################################
 # Fonctions generale   
@@ -101,7 +101,7 @@ def event_Left_Drop_Target():
 
 def event_Left_Top_Target():
     add_ball_save()
-    Output.Lamp.instances["Special"].set_level(1)
+    Output.Lamp.instances["Right Outside Rollover"].set_level(1)
 
 def event_Right_Bottom_Target():
     add_ball_save()
@@ -117,8 +117,8 @@ def event_Right_Top_Target():
     add_bonus_current_player(500) # a definir  
 
 def event_Right_Outside_Rollover():
-    if Output.Lamp.instances["Special"].get_level() == 1:
-        Output.Lamp.instances["Special"].set_level(0)
+    if Output.Lamp.instances["Right Outside Rollover"].get_level() == 1:
+        Output.Lamp.instances["Right Outside Rollover"].set_level(0)
         add_bonus_current_player(5000)
 
 def event_Left_Outside_Rollover():
@@ -210,79 +210,61 @@ Input.Start(x=7, y=4, external_event=event_Start)
 Input.Test(x=7, y=0)
 Input.Slam(pin=Contacts.conn.J5[10])
 Input.Tilt(x=7, y=5, external_event=event_Tilt)
-Input.Credit(x=7, y=1, name="Credit Left", value=Options.get_option('coin_values')[0]), 
-Input.Credit(x=7, y=2, name="Credit Center", value=Options.get_option('coin_values')[1])
-Input.Credit(x=7, y=3, name="Credit Right", value=Options.get_option('coin_values')[2])
+Input.Credit(x=7, y=1, name="Credit Left", value=Options.get('coin_values')[0]), 
+Input.Credit(x=7, y=2, name="Credit Center", value=Options.get('coin_values')[1])
+Input.Credit(x=7, y=3, name="Credit Right", value=Options.get('coin_values')[2])
 
 ################################################################################
 # Input Playfield
 temp_targets = Input.Target_Bank_Drop(name="Left Drop Target Bank", external_event=event_Left_Drop_Target)
 for i in range(5):
-    if i < 2:
-        lamp_control = Output.Lamp_Control.instances[i+3]
-        lamp_latch = Output.Lamp_Latch.instances[5]
-    else:
-        lamp_control = Output.Lamp_Control.instances[i-1]
-        lamp_latch = Output.Lamp_Latch.instances[6]
-    Input.Target_Drop(x=0, y=i, parent=temp_targets, position_enfant=i, lamp_control=lamp_control, lamp_latch=lamp_latch, points=[300,2000])
+    Input.Target_Drop(x=0, y=i, parent=temp_targets, position_enfant=i, num_lamp=18+i, points=[300,2000])
 
 temp_targets = Input.Target_Bank_Drop(name="Right Drop Target Bank", external_event=event_Right_Drop_Target)
-for i in range(5):
-    if i < 2:
-        lamp_control = Output.Lamp_Control.instances[i+3]
-        lamp_latch = Output.Lamp_Latch.instances[7]
-    else:
-        lamp_control = Output.Lamp_Control.instances[i-1]
-        lamp_latch = Output.Lamp_Latch.instances[8]
-    Input.Target_Drop(x=1, y=i, parent=temp_targets, position_enfant=i, lamp_control=lamp_control, lamp_latch=lamp_latch, points=[300,2000])
+for i in range(5):    
+    Input.Target_Drop(x=1, y=i, parent=temp_targets, position_enfant=i, num_lamp=26+i, points=[300,2000])
 
 temp_targets = Input.Target_Bank(name="Left Top Target Bank", external_event=event_Left_Top_Target)
 for i in range(4):
-    Input.Target(x=2, y=i, parent=temp_targets, nb_states=2, position_enfant=i, lamp_control=Output.Lamp_Control.instances[i+1], lamp_latch=Output.Lamp_Latch.instances[12], points=[500,2000])
+    Input.Target(x=2, y=i, parent=temp_targets, nb_states=2, position_enfant=i, num_lamp=44+i, lamp_latch=Output.Lamp_Latch.instances[12], points=[500,2000])
 
-if Options.get_option("nb_balls") == 3:
+if Options.get("nb_balls") == 3:
     nb_states = 1
 else:
     nb_states = 2
     
 temp_targets = Input.Target_Bank(name="Right Bottom Target Bank", external_event=event_Right_Bottom_Target)
 for i in range(4):
-    Input.Target(x=3, y=i, parent=temp_targets, position_enfant=i, lamp_control=Output.Lamp_Control.instances[i+1], lamp_latch=Output.Lamp_Latch.instances[2], points=[500,2000], nb_states=nb_states)
+    Input.Target(x=3, y=i, parent=temp_targets, position_enfant=i, num_lamp=4+i, points=[500,2000], nb_states=nb_states)
 
 temp_targets = Input.Target_Bank_Drop(name="Top Drop Target Bank", external_event=event_Top_Drop_Target)
 for i in range(3):
-    if i < 1:
-        lamp_control = Output.Lamp_Control.instances[i+4]
-        lamp_latch = Output.Lamp_Latch.instances[6]
-    else:
-        lamp_control = Output.Lamp_Control.instances[i]
-        lamp_latch = Output.Lamp_Latch.instances[7]
-    Input.Target_Drop(x=4, y=i, parent=temp_targets, position_enfant=i, lamp_control=lamp_control, lamp_latch=lamp_latch, points=[300,2000])
+    Input.Target_Drop(x=4, y=i, parent=temp_targets, position_enfant=i, num_lamp=23+i, points=[300,2000])
 
-Input.Spinner(x=5, y=1, name="Left Spin Target", lamp_control=Output.Lamp_Control.instances[4], lamp_latch=Output.Lamp_Latch.instances[8], points=[300,2000], external_event=event_Spinner)
-Input.Spinner(x=6, y=2, name="Right Spin Target", lamp_control=Output.Lamp_Control.instances[1], lamp_latch=Output.Lamp_Latch.instances[9], points=[300,2000])
+Input.Spinner(x=5, y=1, name="Left Spin Target", num_lamp=31, points=[300,2000], external_event=event_Spinner)
+Input.Spinner(x=6, y=2, name="Right Spin Target", num_lamp=32, points=[300,2000])
 
 Input.Point(x=5, y=4, name="Top Left Bottom Target", points=2000, external_event=event_Top_Left_Bottom_Target)
 Input.Point(x=6, y=4, name="Bottom Left Bottom Target", points=2000, external_event=event_Bottom_Left_Bottom_Target)               
 
-Input.Input_Playfield(x=5, y=2, name="Right Top Target", external_event=event_Right_Top_Target)
+Input.Playfield(x=5, y=2, name="Right Top Target", external_event=event_Right_Top_Target)
 
-Input.Input_Playfield(x=0, y=5, name="1st Trough", external_event=event_1st_Trough)
-Input.Input_Playfield(x=1, y=5, name="3rd Trough", external_event=event_3rd_Trough)
+Input.Playfield(x=0, y=5, name="1st Trough", external_event=event_1st_Trough)
+Input.Playfield(x=1, y=5, name="3rd Trough", external_event=event_3rd_Trough)
 
 Input.Point(x=6, y=3, name="Right Outside Rollover", points=5000, external_event=event_Right_Outside_Rollover)
 Input.Point(x=2, y=4, name="Left Outside Rollover", points=10000)
                  
-input = Input.Point_Light(x=3, y=5, name="Right Outside Return Rollover", lamp_control=Output.Lamp_Control.instances[2], lamp_latch=Output.Lamp_Latch.instances[5], points=[500,3000])
+input = Input.Point_Light(x=3, y=5, name="Right Outside Return Rollover", num_lamp=17, points=[500,3000])
 input.set_external_event(event_Return_Rollover, lamp=input.lamp)
 
-input = Input.Point_Light(x=3, y=4, name="Left Outside Return Rollover", lamp_control=Output.Lamp_Control.instances[2], lamp_latch=Output.Lamp_Latch.instances[11], points=[500,3000])
+input = Input.Point_Light(x=3, y=4, name="Left Outside Return Rollover", num_lamp=41, points=[500,3000])
 input.set_external_event(event_Return_Rollover, lamp=input.lamp)
 
-input = Input.Point_Light(x=4, y=5, name="Right Inside Return Rollover", lamp_control=Output.Lamp_Control.instances[1], lamp_latch=Output.Lamp_Latch.instances[11], points=[500,3000])
+input = Input.Point_Light(x=4, y=5, name="Right Inside Return Rollover", num_lamp=40, points=[500,3000])
 input.set_external_event(event_Return_Rollover, lamp=input.lamp)
 
-input = Input.Point_Light(x=4, y=4, name="Left Inside Return Rollover", lamp_control=Output.Lamp_Control.instances[1], lamp_latch=Output.Lamp_Latch.instances[11], points=[500,3000])
+input = Input.Point_Light(x=4, y=4, name="Left Inside Return Rollover", num_lamp=40, points=[500,3000])
 input.set_external_event(event_Return_Rollover, lamp=input.lamp) 
 
 Input.Point(x=6, y=1, name="Rollunder", points=5000, external_event=event_Rollunder)
@@ -290,11 +272,11 @@ Input.Point(x=6, y=1, name="Rollunder", points=5000, external_event=event_Rollun
 Input.Point(x=5, y=3, name="10 Points", points=10)
 Input.Point(x=2, y=5, name="Kicking Rubber", points=30)
 
-if Options.get_option("nb_balls") == 3:
+if Options.get("nb_balls") == 3:
     points = [1000, 3000]
 else:
     points = [100, 300]
-Input.Point_Light(x=4, y=3, name="Pop Bumper", lamp_control=Output.Lamp_Control.instances[1], lamp_latch=Output.Lamp_Latch.instances[5], points=points, blink_depend=True)
+Input.Point_Light(x=4, y=3, name="Pop Bumper", num_lamp=16, points=points, blink_depend=True)
 
 Input.Hole(x=5, y=0, name="Top Ball Kicker", external_event=event_Top_Ball_Kicker)
 Input.Hole(x=6, y=0, name="Hole", external_event=event_Hole)
@@ -306,3 +288,6 @@ Input.OutHole(x=5, y=5, name="Outhole", external_event=event_OutHole)
 # Display
 Display.Timer()
 Display.Bonus()
+
+if __name__ == "__main__":
+    Common.power_on()   

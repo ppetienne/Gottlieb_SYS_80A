@@ -1,0 +1,16 @@
+eclipse.preferences.version=1
+encoding//Event/event.py=utf-8
+encoding//GUI_Simulator/AppController.py=utf-8
+encoding//GUI_Simulator/AppView.py=utf-8
+encoding//GUI_Simulator/Starter.py=utf-8
+encoding/API.py=utf-8
+encoding/Common.py=utf-8
+encoding/Contacts.py=utf-8
+encoding/Data_Save.py=utf-8
+encoding/Display.py=utf-8
+encoding/I2C_Components.py=utf-8
+encoding/I2C_Master.py=utf-8
+encoding/Input.py=utf-8
+encoding/Interface_Test.py=utf-8
+encoding/Options.py=utf-8
+encoding/Output.py=utf-8
